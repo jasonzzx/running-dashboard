@@ -1,0 +1,11 @@
+.venv/
+vendor/
+data/
+reports/*
+!reports/GARMIN_DATA_GUIDE.md
+__pycache__/
+.DS_Store
+.env
+.env.*
+.vercel/
+node_modules/

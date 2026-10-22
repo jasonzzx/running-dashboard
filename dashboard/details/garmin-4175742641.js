@@ -1,0 +1,1 @@
+window.receiveDetail("garmin-4175742641",{"points":[],"laps":[],"late":null,"description":null,"private_note":null,"filename":"data/garmin_export/DI_CONNECT/DI-Connect-Fitness/jasonzzx@gmail.com_2701_summarizedActivities.json","sample_count":0,"session_count":0,"quality":{},"source":"garmin","summary_only":true});
