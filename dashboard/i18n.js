@@ -1,7 +1,5 @@
 'use strict';
 (() => {
-  // Keep pace.js parser-blocking so the first dashboard render can populate its charts.
-  document.write('<script src="pace.js"><\\/script>');
   const languageKey = 'running-dashboard-language';
   const textSources = new WeakMap(), attributeSources = new WeakMap();
   const zh = {
