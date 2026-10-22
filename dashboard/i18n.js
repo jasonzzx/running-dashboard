@@ -43,4 +43,8 @@
     new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => { if (node.nodeType === Node.ELEMENT_NODE) localize(node); else if (node.nodeType === Node.TEXT_NODE && node.parentElement) localize(node.parentElement); }))).observe(document.body, {childList:true, subtree:true});
     setLanguage(window.dashboardLanguage);
   });
+  const order = ['overview', 'pace-distribution', 'analysis', 'explore', 'detail', 'garmin', 'races', 'coverage'];
+  const main = document.querySelector('main');
+  const footer = main?.querySelector('footer');
+  if (main && footer) order.forEach(id => { const section = document.getElementById(id); if (section) main.insertBefore(section, footer); });
 })();
