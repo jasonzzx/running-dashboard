@@ -8,6 +8,8 @@ The dashboard adapts to a phone-width screen: Sections and Overview filters expa
 
 Repository: https://github.com/jasonzzx/running-dashboard
 
+Live dashboard: https://running-dashboard-xi.vercel.app/
+
 This is a static site. Vercel serves only `dashboard/`, using the settings in `vercel.json`. No cloud database, Python installation, or environment variables are required. The build command verifies all page assets and generated recording details before publishing. Connect this repository to Vercel with the repository root as Root Directory and `main` as the production branch; pushes to `main` then deploy automatically.
 
 The owner has chosen a public dashboard and public repository. Generated dashboard files contain personal activity and recovery metrics, activity descriptions, and private activity notes. Anyone can view or download them, including from Git history. Raw exports, local databases, reports containing import metadata, dependencies, and credentials are excluded from Git. The `noindex` header discourages search indexing but does not restrict access.
