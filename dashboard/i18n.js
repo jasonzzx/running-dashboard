@@ -1,0 +1,46 @@
+'use strict';
+(() => {
+  const languageKey = 'running-dashboard-language';
+  const textSources = new WeakMap(), attributeSources = new WeakMap();
+  const zh = {
+    "JASON'S TRAINING JOURNAL":"JASON 的训练日志", "Personal training history":"个人训练记录", "Built from your original recordings.":"基于你的原始运动记录。", "Activity + recovery history.":"活动与恢复历史。", "TRAINING / EXPLORER":"训练 / 浏览", "Preparing your history…":"正在准备训练记录…", "Sections ☰":"导航 ☰", "Overview filters":"概览筛选", "Overview":"概览", "Analysis & direction":"分析与训练方向", "Explore your runs":"浏览跑步记录", "Inside a run":"单次跑步详情", "Long-run comparison":"长距离训练对比", "Running pace distribution":"跑步配速分布", "Dynamics & recovery":"跑姿数据与恢复", "Data coverage":"数据覆盖范围",
+    "Period":"时间范围", "From":"开始日期", "To":"结束日期", "Activity":"活动类型", "Setting":"场景", "All available history":"全部历史记录", "Last 12 weeks of data":"最近 12 周", "Last 12 months of data":"最近 12 个月", "Running":"跑步", "All activities":"所有活动", "Road / outdoor":"公路 / 户外", "Treadmill":"跑步机", "Track":"跑道", "Trail":"越野", "Other / unclassified":"其他 / 未分类", "All settings":"全部场景", "Reset filters":"重置筛选",
+    "YOUR TRAINING AT A GLANCE":"你的训练概览", "Every run.":"每一次跑步。", "A little more context.":"多一点背景与洞察。", "Explore the work behind your performance. Follow your volume, find patterns, and look closer at the kilometres that matter.":"探索成绩背后的训练过程。追踪训练量，发现规律，并深入了解关键里程。", "YOUR DATASET":"你的数据集", "Import in progress":"正在导入", "CONSISTENCY OVER TIME":"长期一致性", "Training volume":"训练量", "Group by":"分组方式", "Week":"周", "Month":"月", "Year":"年", "Select a bar to explore its activities. Dates use UTC throughout.":"选择柱状图可查看该时间段的活动。日期均使用 UTC。",
+    "EVIDENCE → INTERPRETATION → ACTION":"证据 → 解读 → 行动", "Your training, in depth":"深入分析你的训练", "Follow overview setting":"跟随概览场景", "Analyse setting":"分析场景", "Annual history and training volume":"年度历史与训练量", "Recent training structure":"近期训练结构", "Pace and heart-rate evidence":"配速与心率依据", "Long efforts and late-run durability":"长距离与后程耐力", "Garmin recovery and mechanics context":"Garmin 恢复与跑姿背景", "Training direction and ways to track progress":"训练方向与进展追踪", "Methods, evidence and what remains unknown":"方法、证据与未知因素",
+    "FIND YOUR PATTERNS":"发现你的规律", "Download filtered CSV ↓":"下载筛选后的 CSV ↓", "Pace & heart rate":"配速与心率", "Each point is one activity. Select a point to inspect it.":"每个点代表一次活动。选择一个点以查看详情。", "Moving pace versus activity-average heart rate; comparisons are affected by terrain, weather, pauses, and sensor quality. Not a fitness score.":"移动配速与活动平均心率的关系会受地形、天气、暂停及传感器质量影响，并非体能评分。", "Distance mix":"距离分布", "Activity counts by recorded distance":"按记录距离统计活动次数", "Longest in this selection":"当前筛选中的最长活动", "Search activities":"搜索活动", "Race name, location, notes…":"赛事名称、地点、备注…", "Sort by":"排序方式", "Newest first":"最新优先", "Longest first":"距离最长优先", "Fastest moving pace":"移动配速最快优先", "Date · UTC":"日期 · UTC", "Distance":"距离", "Moving pace":"移动配速", "Avg HR":"平均心率", "Time":"时间", "← Previous":"← 上一页", "Next →":"下一页 →",
+    "BEYOND THE AVERAGES":"不止于平均值", "ORIGINAL RECORDING":"原始记录", "Select an activity above.":"请在上方选择一项活动。", "Show":"显示指标", "Recorded pace · min/km":"记录配速 · 分/公里", "Heart rate · bpm":"心率 · bpm", "Power · W":"功率 · W", "Cadence · steps/min":"步频 · 步/分钟", "Elevation · m":"海拔 · 米", "Ground contact · ms":"触地时间 · 毫秒", "Vertical oscillation · mm":"垂直振幅 · 毫米", "Step length · m":"步幅 · 米", "Vertical ratio · %":"垂直比 · %", "Horizontal axis":"横轴", "Distance · km":"距离 · 公里", "Elapsed time · min":"经过时间 · 分钟", "Recorded laps":"记录分段", "Activity notes & source":"活动备注与来源",
+    "ENDURANCE IN CONTEXT":"耐力背景", "Compare long efforts":"对比长距离训练", "Select two efforts of at least 30 km. This list uses your full running history, independently of the filters above.":"选择两次至少 30 公里的活动进行对比。此列表使用完整跑步历史，不受上方筛选影响。", "First effort":"第一次活动", "Second effort":"第二次活动", "WHERE YOUR RUNNING TIME GOES":"跑步时间去向", "Follows the overview date and setting filters. Running only; treadmill records are always excluded.":"跟随概览的日期和场景筛选。仅限跑步，始终排除跑步机记录。", "NO TREADMILL":"不含跑步机", "Time by pace":"按配速统计时间", "Hours spent in each pace range · min/km":"每个配速区间的小时数 · 分/公里", "Distance by pace":"按配速统计距离", "Kilometres covered in each pace range · min/km":"每个配速区间的公里数 · 分/公里", "How this distribution is calculated":"配速分布计算方式",
+    "GARMIN ENRICHMENT":"GARMIN 扩展数据", "Running dynamics & recovery":"跑姿数据与恢复", "Mechanics use full history through the latest run. Recovery uses its own period below. Activity trends use Garmin summaries; durability uses original samples.":"跑姿数据使用截至最新跑步的完整历史。恢复数据使用下方独立的时间范围。活动趋势使用 Garmin 摘要；耐力使用原始采样。", "Long-term mechanics trend":"长期跑姿趋势", "Monthly median of activity averages":"每月活动平均值的中位数", "Metric":"指标", "VO₂ max estimate":"VO₂ 最大摄氧量估计", "Aerobic training effect":"有氧训练效果", "Mechanics by pace":"按配速分析跑姿", "Compare like pace ranges within the selected setting":"在所选场景中对比相近配速区间", "Chart metric":"图表指标", "Year-by-year mechanics":"逐年跑姿数据", "Annual medians. Use this to see whether a change persists across many runs rather than one workout.":"年度中位数。用于观察变化是否持续出现在多次跑步中，而非仅一次训练。", "Long-run durability":"长距离耐力", "Within-run change from 25–50% of recorded distance to 75–98%":"单次跑步中，从记录距离 25–50% 到 75–98% 的变化", "Minimum distance":"最小距离", "Recovery history":"恢复历史", "Sleep hours":"睡眠时长", "Sleep score":"睡眠评分", "Resting HR":"静息心率", "Weekly HRV average · ms":"每周 HRV 平均值 · 毫秒", "Training readiness":"训练准备度", "Acute load":"急性负荷", "Last 90 days":"最近 90 天", "Last year":"去年", "All history":"全部历史", "KNOW WHAT IS INCLUDED":"了解数据范围", "Measured first. Interpreted with context.":"先测量，再结合背景解读。", "Language":"语言"
+  };
+  const attributes = ['placeholder', 'aria-label', 'title', 'data-label'];
+  const translate = source => {
+    if (window.dashboardLanguage !== 'zh-CN') return source;
+    if (zh[source]) return zh[source];
+    const trimmed = source.trim();
+    if (zh[trimmed]) return source.slice(0, source.length - source.trimStart().length) + zh[trimmed] + source.slice(source.trimEnd().length);
+    return source.replace(/^(\d[\d,.]*) matching$/, '$1 条匹配记录').replace(/^Page (\d+) of (\d+)$/, '第 $1 / $2 页').replace(/^(\d[\d,.]*) activities$/, '$1 项活动').replace(/^(\d+) days$/, '$1 天').replace(/^Full history · /, '完整历史 · ').replace(/^Loading original recording…$/, '正在加载原始记录…').replace(/^No matching activities\.$/, '没有匹配的活动。').replace(/^Inspect /, '查看 ').replace(/^Latest 28 days$/, '最近 28 天').replace(/^Prior 28 days$/, '此前 28 天').replace(/^Same dates last year$/, '去年同期');
+  };
+  function localize(root = document.body) {
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode(node) { return !['SCRIPT','STYLE','NOSCRIPT'].includes(node.parentElement?.tagName) && node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; }}), nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => { const source = textSources.get(node) ?? node.nodeValue; if (!textSources.has(node)) textSources.set(node, source); node.nodeValue = translate(source); });
+    root.querySelectorAll?.('*').forEach(el => attributes.forEach(attribute => { if (!el.hasAttribute(attribute)) return; const saved = attributeSources.get(el) || {}, source = saved[attribute] ?? el.getAttribute(attribute); saved[attribute] = source; attributeSources.set(el, saved); el.setAttribute(attribute, translate(source)); }));
+  }
+  function setLanguage(language) {
+    window.dashboardLanguage = language === 'en' ? 'en' : 'zh-CN';
+    try { localStorage.setItem(languageKey, window.dashboardLanguage); } catch (_) {}
+    document.documentElement.lang = window.dashboardLanguage === 'zh-CN' ? 'zh-CN' : 'en';
+    document.title = window.dashboardLanguage === 'zh-CN' ? 'Jason · 跑步数据' : 'Jason · Running Data';
+    document.querySelectorAll('[data-language]').forEach(button => { const active = button.dataset.language === window.dashboardLanguage; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
+    localize(); document.dispatchEvent(new CustomEvent('dashboardlanguagechange'));
+  }
+  window.dashboardLocalize = localize; window.dashboardSetLanguage = setLanguage;
+  document.addEventListener('DOMContentLoaded', () => {
+    let stored; try { stored = localStorage.getItem(languageKey); } catch (_) {}
+    window.dashboardLanguage = stored === 'en' ? 'en' : 'zh-CN';
+    document.querySelectorAll('[data-language]').forEach(button => button.addEventListener('click', () => setLanguage(button.dataset.language)));
+    new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => { if (node.nodeType === Node.ELEMENT_NODE) localize(node); else if (node.nodeType === Node.TEXT_NODE && node.parentElement) localize(node.parentElement); }))).observe(document.body, {childList:true, subtree:true});
+    setLanguage(window.dashboardLanguage);
+  });
+})();
