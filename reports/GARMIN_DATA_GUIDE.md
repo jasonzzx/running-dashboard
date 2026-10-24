@@ -79,3 +79,33 @@ The dashboard offers setting-separated monthly dynamics medians, full-resolution
 ```
 
 For this unchanged export, a completed `data/garmin_index.json` can be reused. Import + finalize must run as a pair; do not run finalization twice against the same staging database. For a different future export, re-index it and revisit the preserved base strategy. Strava's original standalone importer now refuses to overwrite an enriched dataset.
+
+## Refresh the independently authored analysis reports
+
+For an unchanged import, refresh the analysis without regenerating all recording charts:
+
+```sh
+.venv/bin/python scripts/build_analysis.py
+node scripts/build_analysis_reports.mjs
+.venv/bin/python tests/check_deep_analysis.py
+node tests/check_deployment.mjs
+```
+
+The analysis builder re-reads canonical database rows and refuses to combine newer
+activity data with an older dashboard export. If it reports a mismatch, run the
+full `build_dashboard.py` export first. English and Chinese narratives live in
+`dashboard/analysis-en.js` and `dashboard/analysis-zh.js`, independently of UI
+translation. Both use the same evidence model and are published as standalone
+reports under `dashboard/reports/` as well as in the dashboard. The standalone
+reports use the road/outdoor setting and label all-setting comparisons explicitly.
+
+Version 2 adds aligned year-to-date totals, 12 seven-day windows including zero-run
+dates, multiple-run dates, pre-race weeks excluding race day, matched-HR counts and
+spread, original-sample marathon splits and a baseline sensitivity check. Source
+fingerprints and rebuild timestamps prevent stale reports from being deployed.
+The source-data cutoff is displayed separately from the rebuild time.
+
+For browser checks, install/use Playwright outside the production site and run
+`node tests/check_languages.cjs` with `NODE_PATH` set to that installation if needed.
+Set `DASHBOARD_URL` to test a deployed site. The checks exercise both reports,
+all analysis settings, chart metrics, tooltips, language persistence and mobile layout.

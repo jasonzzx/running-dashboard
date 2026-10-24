@@ -2,6 +2,7 @@
 (() => {
   const languageKey = 'running-dashboard-language';
   const textSources = new WeakMap(), attributeSources = new WeakMap();
+  let observer;
   const zh = {
     "JASON'S TRAINING JOURNAL":"JASON 的训练日志", "Personal training history":"个人训练记录", "Built from your original recordings.":"基于你的原始运动记录。", "Activity + recovery history.":"活动与恢复历史。", "TRAINING / EXPLORER":"训练 / 浏览", "Preparing your history…":"正在准备训练记录…", "Sections ☰":"导航 ☰", "Overview filters":"概览筛选", "Overview":"概览", "Analysis & direction":"分析与训练方向", "Explore your runs":"浏览跑步记录", "Inside a run":"单次跑步详情", "Long-run comparison":"长距离训练对比", "Running pace distribution":"跑步配速分布", "Dynamics & recovery":"跑姿数据与恢复", "Data coverage":"数据覆盖范围",
     "Period":"时间范围", "From":"开始日期", "To":"结束日期", "Activity":"活动类型", "Setting":"场景", "All available history":"全部历史记录", "Last 12 weeks of data":"最近 12 周", "Last 12 months of data":"最近 12 个月", "Running":"跑步", "All activities":"所有活动", "Road / outdoor":"公路 / 户外", "Treadmill":"跑步机", "Track":"跑道", "Trail":"越野", "Other / unclassified":"其他 / 未分类", "All settings":"全部场景", "Reset filters":"重置筛选",
@@ -13,9 +14,11 @@
     "GARMIN ENRICHMENT":"GARMIN 扩展数据", "Running dynamics & recovery":"跑姿数据与恢复", "Mechanics use full history through the latest run. Recovery uses its own period below. Activity trends use Garmin summaries; durability uses original samples.":"跑姿数据使用截至最新跑步的完整历史。恢复数据使用下方独立的时间范围。活动趋势使用 Garmin 摘要；耐力使用原始采样。", "Long-term mechanics trend":"长期跑姿趋势", "Monthly median of activity averages":"每月活动平均值的中位数", "Metric":"指标", "VO₂ max estimate":"VO₂ 最大摄氧量估计", "Aerobic training effect":"有氧训练效果", "Mechanics by pace":"按配速分析跑姿", "Compare like pace ranges within the selected setting":"在所选场景中对比相近配速区间", "Chart metric":"图表指标", "Year-by-year mechanics":"逐年跑姿数据", "Annual medians. Use this to see whether a change persists across many runs rather than one workout.":"年度中位数。用于观察变化是否持续出现在多次跑步中，而非仅一次训练。", "Long-run durability":"长距离耐力", "Within-run change from 25–50% of recorded distance to 75–98%":"单次跑步中，从记录距离 25–50% 到 75–98% 的变化", "Minimum distance":"最小距离", "Recovery history":"恢复历史", "Sleep hours":"睡眠时长", "Sleep score":"睡眠评分", "Resting HR":"静息心率", "Weekly HRV average · ms":"每周 HRV 平均值 · 毫秒", "Training readiness":"训练准备度", "Acute load":"急性负荷", "Last 90 days":"最近 90 天", "Last year":"去年", "All history":"全部历史", "KNOW WHAT IS INCLUDED":"了解数据范围", "Measured first. Interpreted with context.":"先测量，再结合背景解读。", "Language":"语言",
     "SNAPSHOT · THROUGH":"快照 · 截至", "Your training, in depth":"深入分析你的训练", "Training volume":"训练量", "Comparable effort":"可比训练", "Garmin recovery context":"Garmin 恢复背景", "The long view":"长期视角", "Recent training structure":"近期训练结构", "Pace and heart-rate context":"配速与心率背景", "Long efforts and late-run durability":"长距离训练与后程耐力", "Garmin context":"Garmin 背景", "Training direction, based on the October 18 snapshot":"基于 10 月 18 日快照的训练方向", "How to judge whether it is working":"如何判断训练是否有效", "Question":"问题", "What to measure":"测量内容", "Useful decision":"可执行判断", "Coaching interpretation · conditional":"训练解读 · 条件性建议", "After the October 18 marathon / recovery":"10 月 18 日马拉松之后 / 恢复", "Next / rebuild a repeatable base":"下一步 / 重建可重复的基础", "Then / one purposeful quality session":"然后 / 每周一次有目的的质量训练", "Marathon block / road-specific durability":"马拉松训练阶段 / 公路专项耐力", "Every week / support the running":"每周 / 支持跑步训练", "Long sessions / rehearse fueling":"长距离训练 / 练习补给", "Mental execution / rehearse the last 9 km":"心理执行 / 练习最后 9 公里", "Recent source activities in this setting":"此场景中的近期原始活动", "Matched-cohort activity IDs":"匹配队列活动 ID", "Guidance sources":"参考指南", "Year":"年份", "Runs":"跑步次数", "Distance":"距离", "Moving hours":"移动小时数", "Moving pace":"移动配速", "Window":"时间窗口", "Qualifying runs":"符合条件的跑步", "Median pace":"配速中位数", "Median HR":"心率中位数", "Activity / evidence":"活动 / 证据", "Pace change":"配速变化", "Daily metric":"日指标", "Latest 28 days":"最近 28 天", "Prior 28 days":"此前 28 天"
   };
-  const attributes = ['placeholder', 'aria-label', 'title', 'data-label'];
+  const attributes = ['placeholder', 'aria-label', 'title', 'data-label', 'data-tip'];
   const translate = source => {
     if (window.dashboardLanguage !== 'zh-CN') return source;
+    const complete = window.dashboardChineseText?.(source);
+    if (complete != null) return source.slice(0, source.length - source.trimStart().length) + complete + source.slice(source.trimEnd().length);
     if (zh[source]) return zh[source];
     const trimmed = source.trim();
     if (zh[trimmed]) return source.slice(0, source.length - source.trimStart().length) + zh[trimmed] + source.slice(source.trimEnd().length);
@@ -23,11 +26,33 @@
   };
   function localize(root = document.body) {
     if (!root) return;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode(node) { return !['SCRIPT','STYLE','NOSCRIPT'].includes(node.parentElement?.tagName) && node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; }}), nodes = [];
+    // Disconnect while translating so our own writes cannot trigger a loop.
+    observer?.disconnect();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode(node) { return !node.parentElement?.closest('[data-i18n-managed]') && !['SCRIPT','STYLE','NOSCRIPT'].includes(node.parentElement?.tagName) && node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; }}), nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(node => { const source = textSources.get(node) ?? node.nodeValue; if (!textSources.has(node)) textSources.set(node, source); node.nodeValue = translate(source); });
-    root.querySelectorAll?.('*').forEach(el => attributes.forEach(attribute => { if (!el.hasAttribute(attribute)) return; const saved = attributeSources.get(el) || {}, source = saved[attribute] ?? el.getAttribute(attribute); saved[attribute] = source; attributeSources.set(el, saved); el.setAttribute(attribute, translate(source)); }));
+    nodes.forEach(node => {
+      const previous=textSources.get(node), current=node.nodeValue;
+      const source=previous && current===previous.rendered ? previous.source : current;
+      const rendered=translate(source);
+      textSources.set(node,{source,rendered});
+      if(current!==rendered) node.nodeValue=rendered;
+    });
+    [root,...root.querySelectorAll('*')].forEach(el => attributes.forEach(attribute => {
+      if(el.closest('[data-i18n-managed]') || !el.hasAttribute(attribute)) return;
+      const saved=attributeSources.get(el)||{}, previous=saved[attribute], current=el.getAttribute(attribute);
+      const source=previous && current===previous.rendered ? previous.source : current, rendered=translate(source);
+      saved[attribute]={source,rendered}; attributeSources.set(el,saved);
+      if(current!==rendered) el.setAttribute(attribute,rendered);
+    }));
+    observer?.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:attributes});
   }
+  // Renderers must compose sentences from original labels in both languages.
+  window.dashboardOptionText = select => {
+    const option=select.selectedOptions[0];
+    return [...option.childNodes].map(node=>textSources.get(node)?.source ?? node.textContent).join('');
+  };
+  window.dashboardTranslate=translate;
+  window.dashboardAttributeSource = (el, attribute) => attributeSources.get(el)?.[attribute]?.source ?? el.getAttribute(attribute);
   function setLanguage(language) {
     window.dashboardLanguage = language === 'en' ? 'en' : 'zh-CN';
     try { localStorage.setItem(languageKey, window.dashboardLanguage); } catch (_) {}
@@ -41,7 +66,7 @@
     let stored; try { stored = localStorage.getItem(languageKey); } catch (_) {}
     window.dashboardLanguage = stored === 'en' ? 'en' : 'zh-CN';
     document.querySelectorAll('[data-language]').forEach(button => button.addEventListener('click', () => setLanguage(button.dataset.language)));
-    new MutationObserver(records => records.forEach(record => record.addedNodes.forEach(node => { if (node.nodeType === Node.ELEMENT_NODE) localize(node); else if (node.nodeType === Node.TEXT_NODE && node.parentElement) localize(node.parentElement); }))).observe(document.body, {childList:true, subtree:true});
+    observer = new MutationObserver(() => localize());
     setLanguage(window.dashboardLanguage);
   });
   const order = ['overview', 'pace-distribution', 'analysis', 'explore', 'detail', 'garmin', 'races', 'coverage'];

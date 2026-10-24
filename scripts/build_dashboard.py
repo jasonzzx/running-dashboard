@@ -60,4 +60,6 @@ def main():
  build()
  from build_garmin_dashboard import build as build_garmin
  build_garmin()
+ import subprocess
+ subprocess.run(['node',str(ROOT/'scripts/build_analysis_reports.mjs')],check=True)
 if __name__=='__main__':main()

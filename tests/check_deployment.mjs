@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../dashboard/', import.meta.url));
@@ -15,6 +16,16 @@ for (const name of ['data.js', 'analysis-data.js', 'garmin-data.js', 'pace-data.
   vm.runInContext(fs.readFileSync(path.join(root, name), 'utf8'), context, { filename: name });
 }
 const activities = context.window.RUNNING_DATA.activities;
+const analysis = context.window.TRAINING_ANALYSIS;
+const sourceHash = createHash('sha256').update(fs.readFileSync(path.join(root,'data.js'))).digest('hex');
+assert.equal(analysis.deep?.version, 2, 'Deep analysis must be rebuilt');
+assert.equal(analysis.deep.source_sha256, sourceHash, 'Analysis and dashboard data are out of sync');
+for (const lang of ['en','zh']) {
+  const report = fs.readFileSync(path.join(root,'reports',`analysis-${lang}.html`),'utf8');
+  assert(report.includes(sourceHash.slice(0,16)), `Stale ${lang} report`);
+  assert(report.includes(analysis.deep.rebuilt_utc), `Report ${lang} is from an older analysis build`);
+}
+assert(html.indexOf('src="pace.js"') < html.indexOf('src="app.js"'), 'Load the pace renderer before the app');
 assert(activities.length > 0, 'Dashboard has no activities');
 assert.equal(new Set(activities.map(a => a.id)).size, activities.length, 'Duplicate activity IDs');
 let details = 0;

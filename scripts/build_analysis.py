@@ -7,7 +7,17 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def build():
  raw=(ROOT/'dashboard/data.js').read_text().split('=',1)[1].rstrip(';\n')
- data=json.loads(raw); runs=[r for r in data['activities'] if r['sport']=='running']
+ data=json.loads(raw)
+ # Re-read canonical records for every analysis refresh. Refuse to mix a newer
+ # database with an older dashboard snapshot; a full export is required then.
+ db=duckdb.connect(str(ROOT/'data/running.duckdb'),read_only=True)
+ result=db.execute("SELECT source_activity_id AS id,activity_key,source,name,sport,sub_sport,CAST(start_utc AS VARCHAR) AS start_utc,distance_m,moving_s,elapsed_s,avg_pace_s_km AS pace_s,avg_hr_bpm,avg_power_w,ascent_m,sample_count,description FROM activities ORDER BY start_utc DESC")
+ columns=[c[0] for c in result.description]
+ records=[dict(zip(columns,row)) for row in result.fetchall()]
+ for r in records:r['date']=r['start_utc'][:10]
+ if records!=data['activities']:
+  raise SystemExit('Canonical activity data changed. Run scripts/build_dashboard.py before refreshing analysis.')
+ runs=[r for r in records if r['sport']=='running']
  end=max(dt.date.fromisoformat(r['date']) for r in runs)
  def summary(rows,days=None):
   km=sum(r['distance_m'] or 0 for r in rows)/1000
@@ -42,7 +52,6 @@ def build():
   l=detail.get('late')
   if l and l.get('baseline_s_km') and l.get('late_s_km'):
    long.append(dict(id=r['id'],date=r['date'],name=r['name'],setting=r['sub_sport'],km=r['distance_m']/1000,elapsed_s=r['elapsed_s'],hr=r['avg_hr_bpm'],baseline=l['baseline_s_km'],late=l['late_s_km'],change=(l['late_s_km']/l['baseline_s_km']-1)*100))
- db=duckdb.connect(str(ROOT/'data/running.duckdb'),read_only=True)
  wellness={}
  for date,value in db.execute('SELECT calendar_date,sleep_seconds/3600.0 FROM garmin_sleep WHERE sleep_seconds>0 AND calendar_date<=?', [end]).fetchall():wellness.setdefault(date,{})['sleep_hours']=value
  for date,value in db.execute('SELECT calendar_date,score FROM garmin_sleep WHERE score IS NOT NULL AND calendar_date<=?', [end]).fetchall():wellness.setdefault(date,{})['sleep_score']=value
@@ -64,8 +73,11 @@ def build():
    vals={metric:[r[j] for r in cohort if r[j] is not None] for j,metric in enumerate(['cadence_spm','step_length_m','ground_contact_ms','vertical_ratio_pct'],1)}
    periods.append(dict(start=str(lo),end=str(hi),runs=len(cohort),metrics={metric:dict(n=len(v),median=st.median(v) if v else None) for metric,v in vals.items()}))
   mechanics[key]=periods
+ from deep_analysis import enrich
+ deep=enrich(db,runs,end,summary,cohorts)
  db.close()
  out=dict(as_of=str(end),total=summary(runs),cohorts=cohorts,long=long,garmin=dict(wellness=windows,mechanics=mechanics),method='Combined Strava and Garmin running history; UTC activity dates. Aggregate moving pace uses only activities with positive distance and moving time; activity and distance totals still include runs without timing. Garmin wellness uses source-local calendar dates through the latest activity and daily medians for adjacent 28-day windows. Garmin mechanics medians use 8–16 km runs at activity-average 4:30–5:00/km within each setting and adjacent 84-day windows. Late-effort pace uses elapsed-time crossings in original full-resolution recordings.',limitations=data['status']['limitations'])
+ out['deep']=deep
  (ROOT/'reports/training_analysis.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
  (ROOT/'dashboard/analysis-data.js').write_text('window.TRAINING_ANALYSIS='+json.dumps(out,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c')+';\n')
  print('Analysis ready: '+str(len(runs))+' runs; '+str(len(long))+' long-effort comparisons')

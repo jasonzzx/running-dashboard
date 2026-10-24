@@ -23,7 +23,7 @@ function categoryPlot(id,points,label,decimals=1){
 }
 function selectedGarminRuns(){const setting=$('garmin-setting').value;return G.activities.filter(r=>r.sport==='running'&&r.sub_sport===setting)}
 function garminTrend(){
- const key=$('garmin-metric').value,label=$('garmin-metric').selectedOptions[0].text;
+ const key=$('garmin-metric').value,label=window.dashboardOptionText($('garmin-metric'));
  const a=selectedGarminRuns().filter(r=>r[key]!=null&&Number.isFinite(r[key])),groups=new Map();
  a.forEach(r=>{const m=r.date.slice(0,7);if(!groups.has(m))groups.set(m,[]);groups.get(m).push(r[key])});
  garminPlot('garmin-trend',[...groups].sort().map(([m,values])=>({date:m+'-01',value:median(values),n:values.length})),label);
@@ -64,7 +64,7 @@ function durability(){
 function renderGarminAnalyses(){garminTrend();mechanicsByPace();yearlyMechanics();durability()}
 
 function wellness(){
- const key=$('wellness-metric').value,label=$('wellness-metric').selectedOptions[0].text,period=$('wellness-period').value,latest=G.days.at(-1)?.date;if(!latest)return;
+ const key=$('wellness-metric').value,label=window.dashboardOptionText($('wellness-metric')),period=$('wellness-period').value,latest=G.days.at(-1)?.date;if(!latest)return;
  let from=new Date(latest+'T00:00:00Z');if(period!=='all')from.setUTCDate(from.getUTCDate()-Number(period)+1);else from=new Date('1900-01-01T00:00:00Z');
  const a=G.days.filter(r=>r.date>=from.toISOString().slice(0,10)&&r[key]!=null).map(r=>({date:r.date,value:key==='sleep_seconds'?r[key]/3600:r[key]}));garminPlot('wellness-chart',a,label);
  const cut=new Date(latest+'T00:00:00Z');cut.setUTCDate(cut.getUTCDate()-6);const recent=G.days.filter(r=>r.date>=cut.toISOString().slice(0,10)&&r[key]!=null).map(r=>key==='sleep_seconds'?r[key]/3600:r[key]);
@@ -81,4 +81,4 @@ function marathonDynamics(){
  const finding=early&&late?`<p class="caption"><b>Observed pattern:</b> cadence changed from ${fmt(early.cadence_spm,1)} to ${fmt(late.cadence_spm,1)} steps/min; stride length from ${fmt(early.step_length_m,2)} to ${fmt(late.step_length_m,2)} m; ground contact from ${fmt(early.ground_contact_ms,1)} to ${fmt(late.ground_contact_ms,1)} ms. Recorded power changed from ${fmt(early.power_w,0)} to ${fmt(late.power_w,0)} W. The slower pace therefore did not coincide with a large cadence drop or lower recorded power.</p>`:'';
  $('garmin-marathon').innerHTML='<h3>Toronto 2026: mechanics after 33 km</h3><p class="caption">Sample-weighted means from the original marathon recording. These show co-occurring changes, not why pace changed.</p><div class="table-wrap"><table><thead><tr><th>Metric</th>'+phases.map(p=>`<th>${esc(p.segment)}</th>`).join('')+'</tr></thead><tbody>'+fields.map(([k,l])=>'<tr><td>'+l+'</td>'+phases.map(p=>`<td>${fmt(p[k],k==='step_length_m'?2:1)}</td>`).join('')+'</tr>').join('')+'</tbody></table></div>'+finding+'<p class="caption">Training direction: compare mechanics at similar speed and terrain before changing technique. If a late pace drop coincides with shorter strides, examine durability, fueling and conditions; cadence alone is not a diagnosis.</p>';
 }
-window.renderGarminAnalyses=renderGarminAnalyses;if(G){$('garmin-setting').onchange=()=>{renderGarminAnalyses();$('garmin-scope').textContent='Full history · '+$('garmin-setting').selectedOptions[0].text};$('garmin-metric').onchange=garminTrend;$('pace-mechanics-metric').onchange=mechanicsByPace;$('durability-distance').onchange=durability;['wellness-metric','wellness-period'].forEach(id=>$(id).onchange=wellness);renderGarminAnalyses();wellness();marathonDynamics();if(activeId)window.renderGarminDetail(activeId)}
+window.renderGarminAnalyses=renderGarminAnalyses;if(G){$('garmin-setting').onchange=()=>{renderGarminAnalyses();$('garmin-scope').textContent='Full history · '+window.dashboardOptionText($('garmin-setting'))};$('garmin-metric').onchange=garminTrend;$('pace-mechanics-metric').onchange=mechanicsByPace;$('durability-distance').onchange=durability;['wellness-metric','wellness-period'].forEach(id=>$(id).onchange=wellness);renderGarminAnalyses();wellness();marathonDynamics();if(activeId)window.renderGarminDetail(activeId)}
