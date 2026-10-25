@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Reproducible, evidence-linked analysis from the full imported running history."""
-import datetime as dt, json, statistics as st
+import datetime as dt, json, statistics as st, os
 from pathlib import Path
 import duckdb
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(os.environ.get('RUNNING_DATA_ROOT',Path(__file__).resolve().parents[1]))
 
 def build():
  raw=(ROOT/'dashboard/data.js').read_text().split('=',1)[1].rstrip(';\n')

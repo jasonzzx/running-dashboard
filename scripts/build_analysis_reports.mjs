@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-const root=fileURLToPath(new URL('../dashboard/',import.meta.url));
+const root=process.env.RUNNING_DATA_ROOT ? path.join(process.env.RUNNING_DATA_ROOT,'dashboard') : fileURLToPath(new URL('../dashboard/',import.meta.url));
 const escape=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const elements=new Map();
 function element(id){if(!elements.has(id))elements.set(id,{value:'road',innerHTML:'',setAttribute(){},querySelectorAll(){return []}});return elements.get(id);}

@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-const root = fileURLToPath(new URL('../dashboard/', import.meta.url));
+const root = process.env.RUNNING_DATA_ROOT ? path.join(process.env.RUNNING_DATA_ROOT,'dashboard') : fileURLToPath(new URL('../dashboard/', import.meta.url));
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 for (const [, asset] of html.matchAll(/(?:src|href)="([^"#]+\.(?:js|css))"/g)) {
   assert(fs.existsSync(path.join(root, asset)), `Missing page asset: ${asset}`);

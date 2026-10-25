@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>跑步数据管理 · Running Admin</title><link rel="stylesheet" href="/admin.css"><script defer src="/admin.js"></script></head>
+<body><main><header><span>RUNNING / ADMIN</span><button id="language" type="button">English</button></header>
+<h1 data-zh="每周更新，只需几步" data-en="Your weekly data update">每周更新，只需几步</h1>
+<p data-zh="此管理面板在你的 Mac 上运行。历史数据保持不变，新活动和缺失信息会合并到本地数据库。" data-en="This admin runs on your Mac. Historical values stay unchanged; new activities and missing information are merged into your local database.">此管理面板在你的 Mac 上运行。历史数据保持不变，新活动和缺失信息会合并到本地数据库。</p>
+<p id="notice" role="status" aria-live="polite"></p>
+<section id="locked"><h2 data-zh="从 Mac 打开管理面板" data-en="Open admin from your Mac">从 Mac 打开管理面板</h2><p data-zh="在项目文件夹中双击 Start Admin.command。它会打开已登录的本地管理页面；保持终端窗口打开。" data-en="Double-click Start Admin.command in the project folder. It opens an authenticated local admin page. Keep its terminal window open.">在项目文件夹中双击 Start Admin.command。它会打开已登录的本地管理页面；保持终端窗口打开。</p></section>
+<div id="workspace" hidden>
+<div class="accounts"><section><div class="section-head"><h2>Garmin Connect</h2><span id="garmin-state"></span></div>
+<p data-zh="首次连接：在 Garmin 网站创建个人 API 密钥，然后粘贴到下方。密钥只保存在本机。" data-en="First connection: create a Personal API key on Garmin’s website, then paste it below. The key stays on this Mac.">首次连接：在 Garmin 网站创建个人 API 密钥，然后粘贴到下方。密钥只保存在本机。</p>
+<a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener noreferrer" data-zh="登录 Garmin 并创建密钥 ↗" data-en="Sign in to Garmin and create a key ↗">登录 Garmin 并创建密钥 ↗</a>
+<form id="garmin-form"><label for="garmin-key" data-zh="个人 API 密钥" data-en="Personal API key">个人 API 密钥</label><input id="garmin-key" type="password" required autocomplete="off"><button type="submit" data-zh="连接 Garmin" data-en="Connect Garmin">连接 Garmin</button></form></section>
+<section><div class="section-head"><h2>Strava</h2><span id="strava-state"></span></div>
+<p data-zh="首次连接：创建自己的 Strava API 应用，回调域填写 127.0.0.1。输入应用凭据后会前往 Strava 授权；以后无需重复登录。" data-en="First connection: create your Strava API application with callback domain 127.0.0.1. Enter its credentials to authorize on Strava. Future syncs reuse the connection.">首次连接：创建自己的 Strava API 应用，回调域填写 127.0.0.1。输入应用凭据后会前往 Strava 授权；以后无需重复登录。</p>
+<a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer" data-zh="打开 Strava API 设置 ↗" data-en="Open Strava API settings ↗">打开 Strava API 设置 ↗</a>
+<form id="strava-form"><label for="client-id">Client ID</label><input id="client-id" inputmode="numeric" required autocomplete="off"><label for="client-secret">Client Secret</label><input id="client-secret" type="password" required autocomplete="off"><button type="submit" data-zh="连接 Strava" data-en="Connect Strava">连接 Strava</button></form></section></div>
+<section><h2 data-zh="同步与发布" data-en="Sync and publish">同步与发布</h2><p data-zh="先同步，再发布。同步会自动匹配重复活动、补全缺失字段，并验证新的仪表盘快照。发布会将快照推送到 GitHub，触发 Vercel 更新。" data-en="Sync first, then publish. Sync matches duplicate activities, fills missing fields, and validates the new dashboard snapshot. Publishing pushes the snapshot to GitHub and triggers Vercel.">先同步，再发布。同步会自动匹配重复活动、补全缺失字段，并验证新的仪表盘快照。发布会将快照推送到 GitHub，触发 Vercel 更新。</p>
+<div class="actions"><button id="sync" data-zh="同步最新数据" data-en="Sync latest data">同步最新数据</button><button id="publish" class="secondary" data-zh="发布仪表盘" data-en="Publish dashboard">发布仪表盘</button><a href="https://running-dashboard-jason.vercel.app/" target="_blank" rel="noopener noreferrer" data-zh="查看线上仪表盘 ↗" data-en="View live dashboard ↗">查看线上仪表盘 ↗</a></div>
+<p id="latest"></p><dl id="summary"></dl><pre id="log" aria-label="Sync progress"></pre>
+<p class="muted" data-zh="恢复数据更新到昨天，避免保存未完成的当日汇总。当前接入：睡眠、静息心率、步数、压力及每周 HRV；未接入的指标保留原有记录。" data-en="Recovery data is imported through yesterday to avoid incomplete daily totals. Supported: sleep, resting heart rate, steps, stress and weekly HRV. Other metrics retain their existing records.">恢复数据更新到昨天，避免保存未完成的当日汇总。当前接入：睡眠、静息心率、步数、压力及每周 HRV；未接入的指标保留原有记录。</p></section>
+</div></main></body></html>

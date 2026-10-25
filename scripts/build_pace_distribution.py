@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Time/distance histograms from original recording intervals, never run averages."""
-import json
+import json, os
 from pathlib import Path
 import duckdb
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(os.environ.get('RUNNING_DATA_ROOT',Path(__file__).resolve().parents[1]))
 
 
 def build():

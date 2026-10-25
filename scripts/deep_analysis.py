@@ -3,10 +3,11 @@ import bisect
 import datetime as dt
 import hashlib
 import json
+import os
 import statistics as st
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(os.environ.get('RUNNING_DATA_ROOT',Path(__file__).resolve().parents[1]))
 
 def enrich(db, runs, end, summary, cohorts):
     def between(rows, lo, hi):

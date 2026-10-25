@@ -25,7 +25,7 @@ git commit -m "Refresh dashboard data"
 git push origin main
 ```
 
-Source changes can be committed and pushed the same way. Data refreshes still happen locally; hosting does not automatically sync Garmin or Strava. Browser filter preferences are saved separately on each device.
+Source changes can be committed and pushed the same way. Data refreshes happen locally; hosting does not automatically sync Garmin or Strava. For weekly API updates, double-click **Start Admin.command**, connect your accounts once, then use **Sync latest data** and **Publish dashboard**. See [the local admin guide](ADMIN.md). Browser filter preferences are saved separately on each device.
 
 ## Current dataset
 

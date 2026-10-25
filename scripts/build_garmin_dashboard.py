@@ -1,8 +1,8 @@
 """Export Garmin-only metrics without profile IDs or GPS for local dashboard."""
-import json,statistics,datetime as dt
+import json,statistics,datetime as dt,os
 from pathlib import Path
 import duckdb
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(os.environ.get('RUNNING_DATA_ROOT',Path(__file__).resolve().parents[1]))
 def build():
  db=duckdb.connect(str(ROOT/'data/running.duckdb'),read_only=True)
  def rows(sql):
