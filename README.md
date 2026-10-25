@@ -8,13 +8,15 @@ The dashboard adapts to a phone-width screen: Sections and Overview filters expa
 
 Repository: https://github.com/jasonzzx/running-dashboard
 
-Live dashboard: https://running-dashboard-xi.vercel.app/
+Live dashboard: https://running-dashboard-jason.vercel.app/
 
-This is a static site. Vercel serves only `dashboard/`, using the settings in `vercel.json`. No cloud database, Python installation, or environment variables are required. The build command verifies all page assets and generated recording details before publishing. Connect this repository to Vercel with the repository root as Root Directory and `main` as the production branch; pushes to `main` then deploy automatically.
+Vercel runs the public dashboard and a private [cloud admin](https://running-dashboard-jason.vercel.app/admin). The admin is restricted to the verified owner email. Neon stores activity summaries, encrypted connections and sync state; private Vercel Blob stores DuckDB snapshots, Parquet exports and dashboard artifacts. See [the cloud admin guide](CLOUD_ADMIN.md) for setup, operation and limits. Pushes to `main` deploy application changes automatically.
 
 The owner has chosen a public dashboard and public repository. Generated dashboard files contain personal activity and recovery metrics, activity descriptions, and private activity notes. Anyone can view or download them, including from Git history. Raw exports, local databases, reports containing import metadata, dependencies, and credentials are excluded from Git. The `noindex` header discourages search indexing but does not restrict access.
 
-After refreshing the local dataset, publish the generated snapshot:
+For weekly updates, open the cloud admin, connect your accounts once, select **Sync latest data**, then **Publish dashboard** after validation. The cloud worker merges new records and generates the dashboard without your Mac or a Git commit. Historical records are retained. The local dataset is a separate backup and is not automatically updated by cloud sync.
+
+For an intentional local rebuild of the original static fallback snapshot:
 
 ```sh
 .venv/bin/python scripts/build_dashboard.py
@@ -25,7 +27,7 @@ git commit -m "Refresh dashboard data"
 git push origin main
 ```
 
-Source changes can be committed and pushed the same way. Data refreshes happen locally; hosting does not automatically sync Garmin or Strava. For weekly API updates, double-click **Start Admin.command**, connect your accounts once, then use **Sync latest data** and **Publish dashboard**. See [the local admin guide](ADMIN.md). Browser filter preferences are saved separately on each device.
+Source changes can be committed and pushed the same way. The previous Mac workflow remains available through **Start Admin.command**; see [the local admin guide](ADMIN.md). Browser filter preferences are saved separately on each device.
 
 ## Current dataset
 

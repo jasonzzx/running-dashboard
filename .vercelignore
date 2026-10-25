@@ -1,7 +1,7 @@
 .venv/
 .venv-cloud/
 data/
-reports/
+/reports/
 .agents/
 .env*
 vendor/

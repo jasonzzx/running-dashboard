@@ -25,7 +25,7 @@ export const POST=queue.handleCallback(async({id},metadata)=>{
  }
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'running-validate-'));
  try{
-  const download=await get(job.result.dashboard_url,{access:'private'});
+  const download=await get(job.result.dashboard_url,{access:'private',token:process.env.BLOB_READ_WRITE_TOKEN});
   if(!download||download.statusCode!==200)throw new Error('Missing candidate dashboard');
   const files=unzipSync(new Uint8Array(await new Response(download.stream).arrayBuffer()));
   for(const [name,bytes] of Object.entries(files)){
@@ -46,7 +46,7 @@ export const POST=queue.handleCallback(async({id},metadata)=>{
    if(!validAsset(name))throw new Error('Invalid generated asset');
    let data=await fs.readFile(root+'/dashboard/'+name);
    if(name.endsWith('.html'))data=Buffer.from(data.toString().replaceAll('href="../style.css"','href="/style.css"').replaceAll('href="../#analysis"','href="/#analysis"'));
-   const blob=await put('snapshots/'+id+'/'+name,data,{access:'private',addRandomSuffix:false,allowOverwrite:true});manifest[name]=blob.url;
+   const blob=await put('snapshots/'+id+'/'+name,data,{access:'private',token:process.env.BLOB_READ_WRITE_TOKEN,addRandomSuffix:false,allowOverwrite:true});manifest[name]=blob.url;
   }
   const context=vm.createContext({window:{}});vm.runInContext(await fs.readFile(root+'/dashboard/data.js','utf8'),context);
   const activities=context.window.RUNNING_DATA.activities;

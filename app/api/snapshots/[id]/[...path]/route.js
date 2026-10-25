@@ -8,7 +8,7 @@ export async function GET(request,{params}){
  if(!snapshot)return new Response('Not found',{status:404});
  const url=snapshot.manifest[key];
  if(!url)return Response.redirect(new URL('/'+key,request.url),307);
- const file=await get(url,{access:'private'});
+ const file=await get(url,{access:'private',token:process.env.BLOB_READ_WRITE_TOKEN});
  if(!file||file.statusCode!==200)return new Response('Unavailable',{status:503});
  return new Response(file.stream,{headers:{'Content-Type':key.endsWith('.html')?'text/html; charset=utf-8':'application/javascript; charset=utf-8','Cache-Control':'public, max-age=31536000, immutable','X-Content-Type-Options':'nosniff'}});
 }
