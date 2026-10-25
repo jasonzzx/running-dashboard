@@ -71,3 +71,10 @@ Run `npm run build`, `npm run test:cloud`, the browser test in
 `tests/check_cloud_browser.cjs`, and `tests/check_sync_pipeline.py`. Real owner OTP
 and provider OAuth/API tests require the user's live authorization; mocks do not
 establish a successful live sync.
+
+The production origin `https://running-dashboard-jason.vercel.app` is registered
+in Neon Auth's trusted domains. A new hostname must be registered before sign-in
+will work there; otherwise Neon returns `Invalid origin`.
+Set `TEST_BASE_URL` to the deployed origin when running the browser test. This
+checks both login languages, mobile layout and unauthorized requests without
+sending verification emails or creating sync jobs.
