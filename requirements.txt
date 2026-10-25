@@ -1,2 +1,5 @@
 duckdb==1.4.4
 fitparse==1.2.0
+psycopg[binary]==3.3.6
+cryptography==50.0.2
+vercel-blob==0.5.0

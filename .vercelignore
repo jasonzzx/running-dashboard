@@ -1,0 +1,10 @@
+.venv/
+.venv-cloud/
+data/
+reports/
+.agents/
+.env*
+vendor/
+node_modules/
+.next/
+public/

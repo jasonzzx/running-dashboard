@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+import tempfile
 
 import duckdb
 from sync_api import Garmin, Strava, normalize_activity, ApiError
@@ -89,7 +90,9 @@ def recover(root=ROOT):
         promote(root, stage, journal)
 
 
-def sync(log, root=ROOT, clients=None):
+def sync(log, root=ROOT, clients=None, finalize=True, isolated=False):
+    if isolated and not root.resolve().is_relative_to(Path(tempfile.gettempdir()).resolve()):
+        raise ValueError('Isolated sync requires a disposable temporary directory')
     admin = root / 'data/admin'
     admin.mkdir(parents=True, exist_ok=True)
     with (admin / 'sync.lock').open('a') as lock:
@@ -105,15 +108,16 @@ def sync(log, root=ROOT, clients=None):
         if not clients:
             raise RuntimeError('Connect at least one provider first.')
         run_id = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%S') + '-' + uuid.uuid4().hex[:8]
-        stage = admin / 'staging' / run_id
-        (stage / 'data/parquet').mkdir(parents=True)
-        (stage / 'reports').mkdir()
+        stage = root if isolated else admin / 'staging' / run_id
+        (stage / 'data/parquet').mkdir(parents=True, exist_ok=True)
+        (stage / 'reports').mkdir(exist_ok=True)
         raw_folder = root / 'data/raw/api' / run_id
         raw_folder.mkdir(parents=True)
         log('Preparing a separate database snapshot / 正在准备独立数据库快照')
-        shutil.copy2(root / 'data/running.duckdb', stage / 'data/running.duckdb')
-        shutil.copy2(root / 'reports/import_status.json', stage / 'reports/import_status.json')
-        shutil.copy2(root / 'reports/garmin_import_report.json', stage / 'reports/garmin_import_report.json')
+        if not isolated:
+            shutil.copy2(root / 'data/running.duckdb', stage / 'data/running.duckdb')
+            shutil.copy2(root / 'reports/import_status.json', stage / 'reports/import_status.json')
+            shutil.copy2(root / 'reports/garmin_import_report.json', stage / 'reports/garmin_import_report.json')
         summary = dict(run_id=run_id, added=0, enriched=0, skipped=0, review=0, samples=0, wellness=0, providers=list(clients))
         changed = set()
         # Today is omitted for wellness to avoid freezing a partial day's totals.
@@ -212,18 +216,25 @@ def sync(log, root=ROOT, clients=None):
             for table in tables + ['activity_features']:
                 db.execute('COPY (SELECT * FROM "' + table + '") TO ? (FORMAT PARQUET, COMPRESSION ZSTD)', [str(stage / 'data/parquet' / (table + '.parquet'))])
         log('Rebuilding and validating dashboard / 正在生成并验证仪表盘')
-        shutil.copytree(root / 'dashboard', stage / 'dashboard', ignore=shutil.ignore_patterns('details'))
-        # Unchanged details are hard-linked; changed details are replaced atomically by the builder.
-        shutil.copytree(root / 'dashboard/details', stage / 'dashboard/details', copy_function=os.link)
+        if not isolated:
+            shutil.copytree(root / 'dashboard', stage / 'dashboard', ignore=shutil.ignore_patterns('details'))
+            # Unchanged details are hard-linked; changed details are replaced atomically by the builder.
+            shutil.copytree(root / 'dashboard/details', stage / 'dashboard/details', copy_function=os.link)
         env = dict(os.environ, RUNNING_DATA_ROOT=str(stage), RUNNING_CHANGED_IDS=json.dumps(sorted(changed)))
+        if not finalize:
+            env['RUNNING_DEFER_REPORTS'] = '1'
         run_command([sys.executable, str(root / 'scripts/build_dashboard.py')], root, env)
-        run_command(['node', str(root / 'tests/check_deployment.mjs')], root, env)
+        if finalize:
+            run_command(['node', str(root / 'tests/check_deployment.mjs')], root, env)
         summary['latest_activity'] = status['date_range_utc'][1]
-        summary['validated'] = True
-        generated = ['data.js', 'analysis-data.js', 'garmin-data.js', 'pace-data.js',
-                     'reports/analysis-en.html', 'reports/analysis-zh.html']
+        summary['validated'] = finalize
+        generated = ['data.js', 'analysis-data.js', 'garmin-data.js', 'pace-data.js']
+        if finalize:
+            generated += ['reports/analysis-en.html', 'reports/analysis-zh.html']
         generated += ['details/' + aid + '.js' for aid in sorted(changed)]
         summary['publish_files'] = {'dashboard/' + name: hashlib.sha256((stage / 'dashboard' / name).read_bytes()).hexdigest() for name in generated}
+        if isolated:
+            return summary
         files = ['data/running.duckdb', 'reports/import_status.json', 'reports/training_analysis.json']
         files += [str(p.relative_to(stage)) for p in (stage / 'data/parquet').glob('*.parquet')]
         files += ['dashboard/' + name for name in generated]

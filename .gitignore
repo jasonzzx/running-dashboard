@@ -9,3 +9,10 @@ __pycache__/
 .env.*
 .vercel/
 node_modules/
+.next/
+public/
+.venv-cloud/
+.agents/
+skills-lock.json
+.vercel
+.env*

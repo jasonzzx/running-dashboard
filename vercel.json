@@ -1,9 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "installCommand": "",
-  "buildCommand": "node tests/check_deployment.mjs",
-  "outputDirectory": "dashboard",
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "functions": {
+    "api/worker.py": {"maxDuration": 300, "includeFiles": "{cloud,scripts}/**"},
+    "app/api/queue/route.js": {"maxDuration": 300, "experimentalTriggers": [{"type": "queue/v2beta", "topic": "running-sync"}]}
+  },
   "headers": [
     {
       "source": "/(.*)",
