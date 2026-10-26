@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 sys.path.insert(0,str(ROOT/'cloud'))
 from sync_runner import sync,write_json,read_json
-from sync_api import Garmin,Strava
+from sync_api import Garmin
 from archive import pack,unpack
 
 def decrypt(value):
@@ -45,7 +45,7 @@ def run(job_id):
         if row[0] in ('validating','ready','published') and row[1]:return row[1]
         db.execute("UPDATE cloud_jobs SET status='running',error=NULL,updated_at=now() WHERE id=%s",[job_id])
         dataset,metadata=db.execute('SELECT dataset_url,metadata FROM cloud_settings WHERE id=1').fetchone()
-        config={provider:decrypt(value) for provider,value in db.execute('SELECT provider,encrypted FROM cloud_connections').fetchall()}
+        config={provider:decrypt(value) for provider,value in db.execute('SELECT provider,encrypted FROM cloud_connections WHERE provider=%s',["garmin"]).fetchall()}
         with tempfile.TemporaryDirectory(prefix='running-cloud-') as folder:
             root=Path(folder)
             archive=root/'input.zip'
@@ -58,14 +58,7 @@ def run(job_id):
             (root/'scripts').symlink_to(ROOT/'scripts',target_is_directory=True)
             (root/'tests').symlink_to(ROOT/'tests',target_is_directory=True)
             write_json(root/'data/admin/credentials.json',config)
-            def save_strava(value):
-                # Persist rotating refresh tokens immediately, even if a later step fails.
-                db.execute("UPDATE cloud_connections SET encrypted=%s,updated_at=now() WHERE provider='strava'",[encrypt(value)])
-                config['strava']=value
-                write_json(root/'data/admin/credentials.json',config)
             clients={}
-            if config.get('strava',{}).get('refresh_token'):
-                clients['strava']=Strava(config['strava'],save_strava)
             if config.get('garmin',{}).get('api_key'):
                 clients['garmin']=Garmin(config['garmin']['api_key'])
             try:

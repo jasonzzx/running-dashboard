@@ -2,14 +2,14 @@
 
 The public dashboard stays on Vercel. `/admin` requires a verified Neon Auth
 session belonging to `jasonzzx@gmail.com`. The browser never receives database
-credentials, encryption keys, Garmin keys or saved Strava refresh tokens.
+credentials, encryption keys, or Garmin keys.
 
 ## Data layout
 
 - Private Vercel Blob store `running-dashboard-private`: the full historical
   DuckDB snapshot, source API responses, generated Parquet and dashboard artifacts.
 - Neon database `running-dashboard-data`: activity summary index, encrypted provider
-  connections, OAuth states, sync jobs, snapshot manifests and the published version.
+  connections, sync jobs, snapshot manifests and the published version.
 - The master is a versioned cloud snapshot selected by PostgreSQL. DuckDB remains
   the analytics engine inside a disposable worker, preserving existing import and
   analysis semantics. PostgreSQL does not contain the 4.3 million recording samples.
@@ -18,8 +18,7 @@ credentials, encryption keys, Garmin keys or saved Strava refresh tokens.
 ## Weekly workflow
 
 1. Sign in at `/admin` with the emailed verification code.
-2. Connect Garmin with a Personal API key. Set the Strava application's callback
-   domain to `running-dashboard-jason.vercel.app`, then authorize Strava once.
+2. Connect Garmin with a Personal API key.
 3. Click **同步最新数据 / Sync latest data**. The durable Vercel Queue continues
    after the browser closes. Each worker invocation has a bounded execution time;
    failed jobs retry up to three deliveries and preserve the published version.
@@ -41,7 +40,7 @@ detail. Only then does one database transaction accept the new master snapshot
 and activity index. Publishing remains a separate explicit owner action.
 
 Provider secrets use AES-256-GCM with `CLOUD_ENCRYPTION_KEY`, stored only in Vercel
-environment variables. Strava refresh-token rotation is persisted immediately.
+environment variables.
 The Python worker accepts only timestamped HMAC-signed requests from the queue
 function. All admin mutations require both a verified owner session and a matching
 request origin. The public artifact route only serves an allowlist of generated

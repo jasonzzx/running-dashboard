@@ -1,14 +1,14 @@
-import {randomUUID,randomBytes} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
 import {send} from '@vercel/queue';
 import {requireOwner} from '../../../lib/auth';
 import {sql,transaction} from '../../../lib/db';
-import {encrypt,digest} from '../../../lib/security';
+import {encrypt} from '../../../lib/security';
 export const dynamic='force-dynamic';
 export const maxDuration=60;
 export async function GET(request){
  try{
   await requireOwner(request);
-  const connections=await sql('SELECT provider,updated_at FROM cloud_connections');
+  const connections=await sql("SELECT provider,updated_at FROM cloud_connections WHERE provider='garmin'");
   const jobs=await sql('SELECT id,status,created_at,updated_at,result->\'summary\' AS summary,error FROM cloud_jobs ORDER BY created_at DESC LIMIT 12');
   const [state]=await sql('SELECT metadata,public_snapshot FROM cloud_settings WHERE id=1');
   const [{count}]=await sql('SELECT count(*) FROM cloud_activities');
@@ -37,16 +37,8 @@ export async function POST(request){
    await sql('INSERT INTO cloud_connections(provider,encrypted) VALUES ($1,$2) ON CONFLICT(provider) DO UPDATE SET encrypted=excluded.encrypted,updated_at=now()',['garmin',encrypt({api_key:body.key.trim(),account_id:String(activity.userProfileId)})]);
    return Response.json({ok:true});
   }
-  if(body.action==='strava'){
-   if(!/^\d+$/.test(body.clientId)||typeof body.clientSecret!=='string'||body.clientSecret.length<10)throw new Error('Enter your Strava app credentials');
-   const state=randomBytes(32).toString('hex'),origin=process.env.APP_ORIGIN;
-   await sql("DELETE FROM cloud_oauth_states WHERE expires_at<now()");
-   await sql("INSERT INTO cloud_oauth_states VALUES ($1,$2,$3,now()+interval '10 minutes')",[digest(state),user.id,encrypt({client_id:body.clientId,client_secret:body.clientSecret})]);
-   const query=new URLSearchParams({client_id:body.clientId,redirect_uri:origin+'/api/strava/callback',response_type:'code',approval_prompt:'auto',scope:'activity:read_all',state});
-   return Response.json({url:'https://www.strava.com/oauth/authorize?'+query});
-  }
   if(body.action==='sync'){
-   if(!(await sql('SELECT provider FROM cloud_connections')).length)throw new Error('Connect an account first / 请先连接账户');
+   if(!(await sql("SELECT provider FROM cloud_connections WHERE provider='garmin'")).length)throw new Error('Connect an account first / 请先连接账户');
    const id=randomUUID();
    await sql("INSERT INTO cloud_jobs(id,status) VALUES ($1,'queued')",[id]);
    try{await send('running-sync',{id},{idempotencyKey:id,region:'iad1'});}catch(e){await sql("UPDATE cloud_jobs SET status='failed',error='Could not enqueue; retry sync',updated_at=now() WHERE id=$1 AND status='queued'",[id]);throw new Error('Could not start sync; retry / 无法启动同步，请重试');}

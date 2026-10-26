@@ -14,7 +14,7 @@ Vercel runs the public dashboard and a private [cloud admin](https://running-das
 
 The owner has chosen a public dashboard and public repository. Generated dashboard files contain personal activity and recovery metrics, activity descriptions, and private activity notes. Anyone can view or download them, including from Git history. Raw exports, local databases, reports containing import metadata, dependencies, and credentials are excluded from Git. The `noindex` header discourages search indexing but does not restrict access.
 
-For weekly updates, open the cloud admin, connect your accounts once, select **Sync latest data**, then **Publish dashboard** after validation. The cloud worker merges new records and generates the dashboard without your Mac or a Git commit. Historical records are retained. The local dataset is a separate backup and is not automatically updated by cloud sync.
+For weekly updates, open the cloud admin, connect Garmin once, select **Sync latest data**, then **Publish dashboard** after validation. The cloud worker merges new records and generates the dashboard without your Mac or a Git commit. Historical records are retained. The local dataset is a separate backup and is not automatically updated by cloud sync.
 
 For an intentional local rebuild of the original static fallback snapshot:
 
