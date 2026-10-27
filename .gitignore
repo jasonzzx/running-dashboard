@@ -3,6 +3,7 @@ vendor/
 data/
 reports/*
 !reports/GARMIN_DATA_GUIDE.md
+!reports/training_history_for_ai.md
 __pycache__/
 .DS_Store
 .env

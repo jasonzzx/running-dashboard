@@ -119,3 +119,7 @@ Read `reports/import_status.json` first, query the database read-only, and cite 
 ## Dependencies
 
 Python 3.9, DuckDB 1.4.4, fitparse 1.2.0. The local virtual environment uses the existing system fitparse package. `vendor/` retains the official PyPI DuckDB wheel for this Mac's Python 3.9 ARM64 environment. See `requirements.txt` for a new environment.
+
+## AI source and London plan
+
+The dashboard has Data, AI Source and Plan tabs. The AI source is the versioned `reports/training_history_for_ai.md` snapshot; it does not refresh when Garmin syncs. It contains personal training and wellness information and is public with this repository. The Plan tab is an editable calendar through the Saturday 24 April 2027 London Marathon, with pace targets and a provisional training schedule. Day edits are stored in browser local storage on the current device; use Export edits and Import edits for backups or transfers. The default plan is a starting point and should be adjusted for recovery, fitness and availability.
