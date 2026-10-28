@@ -73,6 +73,7 @@ def run(job_id):
             raise RuntimeError('A worker is already running')
         row=db.execute('SELECT status,result FROM cloud_jobs WHERE id=%s',[job_id]).fetchone()
         if not row:raise ValueError('Unknown job')
+        if row[0]=='failed':return
         if row[0] in ('validating','ready','published') and row[1]:return row[1]
         db.execute("UPDATE cloud_jobs SET status='running',error=NULL,updated_at=now() WHERE id=%s",[job_id])
         dataset,metadata=db.execute('SELECT dataset_url,metadata FROM cloud_settings WHERE id=1').fetchone()

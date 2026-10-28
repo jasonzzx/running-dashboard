@@ -15,7 +15,7 @@ export const POST=queue.handleCallback(async({id},metadata)=>{
  try{
  if(!/^[0-9a-f-]{36}$/.test(id))throw new Error('Invalid job');
  const [job]=await sql('SELECT status,result FROM cloud_jobs WHERE id=$1',[id]);
- if(!job||['ready','published'].includes(job.status))return;
+ if(!job||['ready','published','failed'].includes(job.status))return;
  if(job.status!=='validating'){
   const body=JSON.stringify({id}),stamp=String(Math.floor(Date.now()/1000));
   const r=await fetch(process.env.APP_ORIGIN+'/api/worker',{method:'POST',headers:{'Content-Type':'application/json','X-Worker-Time':stamp,'X-Worker-Signature':workerSignature(body,stamp)},body,signal:AbortSignal.timeout(280000)});
