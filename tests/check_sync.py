@@ -15,8 +15,21 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from sync_store import initialize, merge_activity, merge_wellness, add_recording, insert, rows
 from sync_api import normalize_activity, Garmin
-from sync_runner import sync_dates, write_json
+from sync_runner import sync_dates, write_json, run_command
 from admin_server import AdminServer
+
+
+class BuildRuntimeTests(unittest.TestCase):
+    def test_snapshot_builder_preserves_bundled_dependencies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            vendor=root/'vendor';vendor.mkdir()
+            (vendor/'bundled_dependency.py').write_text('VALUE="dependency found"')
+            snapshot=root/'snapshot';snapshot.mkdir()
+            builder=root/'builder.py';builder.write_text('from bundled_dependency import VALUE\nprint(VALUE)')
+            with patch.object(sys,'path',[str(vendor),*sys.path]):
+                result=run_command([sys.executable,str(builder)],snapshot,dict(os.environ,RUNNING_DEFER_REPORTS='1'))
+            self.assertEqual(result,'dependency found')
 
 
 class MergeTests(unittest.TestCase):

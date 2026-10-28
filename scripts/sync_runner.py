@@ -52,7 +52,12 @@ def save_provider(provider, value, root=ROOT):
 
 
 def run_command(command, root=ROOT, env=None):
-    result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, timeout=1800)
+    # Vercel adds bundled Python dependencies to the worker's import path.
+    # Child commands change cwd to the disposable snapshot, so preserve those
+    # effective paths as absolute entries rather than relying on cwd lookup.
+    child_env = dict(os.environ if env is None else env)
+    child_env['PYTHONPATH'] = os.pathsep.join(str(Path(entry or os.getcwd()).resolve()) for entry in sys.path)
+    result = subprocess.run(command, cwd=root, env=child_env, capture_output=True, text=True, timeout=1800)
     if result.returncode:
         # These commands never receive credentials. Keep output bounded.
         raise BuildError(command, result)
