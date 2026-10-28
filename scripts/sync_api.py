@@ -28,7 +28,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def request(url, token=None, params=None, form=None, api_key=None, binary=False, accept=None):
     if params:
         url += '?' + urllib.parse.urlencode(params)
-    headers = {'Accept': accept or ('application/octet-stream' if binary else 'application/json')}
+    headers = {'Accept': accept or ('*/*' if binary else 'application/json')}
     if token:
         headers['Authorization'] = 'Bearer ' + token
     if api_key:

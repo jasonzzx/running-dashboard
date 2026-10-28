@@ -107,6 +107,16 @@ class MergeTests(unittest.TestCase):
             self.assertEqual(request.get_method(),'POST')
 
 
+    def test_garmin_recording_accepts_zip_or_fit(self):
+        with patch('sync_api.urllib.request.build_opener') as build:
+            response=build.return_value.open.return_value.__enter__.return_value
+            response.read.side_effect=[b'header.payload.signature',b'PK-original-recording']
+            client=Garmin('dummy')
+            self.assertEqual(client.recording('123'),b'PK-original-recording')
+            request=build.return_value.open.call_args.args[0]
+            self.assertEqual(request.get_header('Accept'),'*/*')
+
+
 class SecurityTests(unittest.TestCase):
     def setUp(self):
         self.server=AdminServer(0)
