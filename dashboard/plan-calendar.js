@@ -4,39 +4,51 @@
   const DAY = 86400000;
   const parse = s => new Date(s + 'T00:00:00Z');
   const iso = d => d.toISOString().slice(0, 10);
-  const longs = [0,60,75,85,95,105,90,110,115,120,95,120,125,130,105,130,135,140,110,140,145,115,135,105,75,0];
-  const easy = '4:45–5:30/km · conversational effort';
-  const threshold = '3:40–3:48/km · controlled threshold';
-  const marathon = '3:51–3:55/km · goal pace, only if controlled';
-  const work = (title, pace, notes) => ({title, pace, notes});
-  function defaultWorkout(date) {
-    if (date < start || date > race) return work('No workout', '', 'Outside the initial plan. Add your own workout.');
-    const diff = Math.floor((parse(date) - parse(start)) / DAY), week = Math.floor(diff / 7), dow = diff % 7;
-    if (date === race) return work('London Marathon', '3:51/km average · 2:42:30 goal', 'Race day. Start controlled; adjust pacing for conditions and how you feel.');
-    if (week === 0) return dow === 0 || dow === 3 ? work('Rest or gentle walk', 'No pace target', 'Recover from Toronto. No hard running while sore.') : work('Optional easy recovery', '5:10–5:50/km · very easy', '20–35 minutes only if legs feel ready. Walk or rest instead if sore.');
-    if (week === 1) return dow === 0 || dow === 4 ? work('Rest', 'No pace target', 'Optional gentle mobility.') : work('Easy return', '5:00–5:40/km · conversational', dow === 6 ? 'Up to 60 minutes only if fully comfortable; shorten or rest as needed.' : '30–45 minutes easy. No workout intensity yet.');
-    if (week === 25) return [work('Rest', 'No pace target', 'Travel, sleep and hydration.'),work('Easy + strides', easy, '35 minutes easy; 4 × 20 seconds relaxed strides, full walking recovery.'),work('Easy run', easy, '30 minutes easy.'),work('Race-pace tune-up', marathon, '20 minutes easy, 2 × 5 minutes at goal pace with 3 minutes easy between, then 10 minutes easy.'),work('Rest', 'No pace target', 'Keep the day relaxed.'),work('Shakeout', '5:00–5:40/km · very easy', '15–20 minutes easy, optional 3 relaxed strides.'),work('Rest', 'No pace target', '')][dow];
-    if (week === 24) return [work('Rest', 'No pace target', 'Mobility if comfortable.'),work('Short threshold', threshold, '15 minutes easy, 3 × 5 minutes controlled with 2 minutes easy jog, 10 minutes easy.'),work('Easy run', easy, '45 minutes easy.'),work('Marathon rhythm', marathon, '15 minutes easy, 2 × 10 minutes at goal pace with 3 minutes easy, 10 minutes easy.'),work('Rest', 'No pace target', 'Optional gentle mobility.'),work('Easy + strides', easy, '35–40 minutes easy and 4 × 20 seconds relaxed strides.'),work('Long easy run', easy, '75 minutes easy, no fast finish.')][dow];
-    const cutback = [6,10,14,18,21,23].includes(week);
-    const early = week <= 5, specific = week >= 11;
-    const recovery = work('Rest', 'No pace target', 'Optional gentle mobility or walking.');
-    if (dow === 0) return recovery;
-    if (dow === 1) {
-      if (week === 2) return work('Easy + strides', easy, '40 minutes easy; 4 × 20 seconds relaxed strides with full recovery, only if fully recovered.');
-      if (week === 3) return work('Easy + strides', easy, '45 minutes easy; 4–6 × 20 seconds relaxed strides with full recovery.');
-      const sets = week < 7 ? '3 × 6 minutes' : week < 15 ? '4 × 6 minutes' : week < 22 ? '3 × 10 minutes' : '3 × 6 minutes';
-      return work(cutback ? 'Controlled tempo' : 'Threshold intervals', threshold, `15–20 minutes easy, ${cutback ? '3 × 5 minutes' : sets} at controlled threshold with 2 minutes easy jog between; 10–15 minutes easy. Shorten if effort is excessive.`);
+  // Outdoor distances are explicit session targets; treadmill doubles are time-based.
+  // Each weekly configuration: recovery day, aerobic day, long run (km), PM minutes.
+  const weeks = [
+    [0,0,0,0],[5,6,9,0],[6,8,12,0],[6,8,15,20],[7,9,18,25],[7,10,20,25],
+    [6,8,16,20],[8,10,22,25],[8,11,24,30],[8,11,26,30],[7,9,20,20],
+    [8,11,25,30],[9,12,27,30],[9,12,28,30],[7,10,22,25],[9,12,28,30],
+    [9,13,30,35],[9,13,30,35],[7,10,23,25],[9,13,30,35],[9,13,32,35],
+    [7,10,24,25],[9,12,30,30],[7,10,22,25],[6,8,16,20],[0,0,0,0]
+  ];
+  const easy='4:45–5:25/km · conversational';
+  const recovery='5:05–5:45/km · very easy';
+  const steady='4:15–4:30/km · controlled';
+  const threshold='3:42–3:52/km · controlled, reassess by effort';
+  const marathon='3:51–3:58/km · controlled, goal is 3:51/km';
+  function run(title,distance,duration,pace,notes,setting='road'){
+    return {title,type:'running',setting,distance,duration,pace,notes,status:'planned'};
+  }
+  function treadmill(minutes){return run('Easy second run',null,minutes,'4:45–5:30/km only on a trusted treadmill display; otherwise easy effort',`${minutes} minutes comfortable. Watch treadmill distance, pace and heart rate are unreliable; do not use them to judge this session. Skip or shorten the double if fatigue is elevated.`,'treadmill');}
+  function plannedDay(date){
+    if(date<start||date>race)return {am:[],pm:[],phase:''};
+    const diff=Math.floor((parse(date)-parse(start))/DAY),week=Math.floor(diff/7),dow=diff%7;
+    if(date===race)return {am:[run('London Marathon',42.195,162.5,'3:51/km average · 2:42:30 goal','Start controlled; adjust for weather, course and current fitness. Execute a practiced fueling and hydration plan.')],pm:[],phase:'Race week'};
+    if(week===0){const mins=[20,25,30,25,30,30,35][dow];return {am:[run('Post-marathon recovery',null,mins,recovery,`${mins} minutes very easy only if soreness is resolving and your gait is normal. Walk or take recovery instead if not ready; no hard running.`)],pm:[],phase:'Post-marathon recovery'};}
+    if(week===25){const mins=[30,35,30,30,20,0,0][dow];const title=dow===3?'Race-pace tune-up':dow===4?'Easy shakeout':'Easy taper run';const notes=dow===3?'10 min easy, 2 × 4 min at goal pace with 2 min easy jog, then 10 min easy. Keep the effort relaxed.':`${mins} minutes very easy; prioritize sleep, travel and fueling. Scale back if tired.`;return {am:[run(title,null,mins,dow===3?marathon:recovery,notes)],pm:[],phase:'Race week'};}
+    const [rec,aerobic,longRun,pmMinutes]=weeks[week];
+    const cutback=[6,10,14,18,21,23].includes(week),early=week<=3,specific=week>=11;
+    let am;
+    if(dow===0)am=run('Recovery run',rec,null,recovery,`${rec} km very easy after the long run. Keep it relaxed; replace with a gentle walk if sore.`);
+    if(dow===1){
+      if(early)am=run('Easy run + relaxed strides',aerobic,null,easy,`${aerobic} km easy. Once fully recovered, finish with 4 × 20-second relaxed strides and full walking recovery.`);
+      else {const total=aerobic+(week>=23?2:4);const reps=cutback||week>=23?'3 × 5 min':week<11?'4 × 5 min':week<19?'3 × 8 min':'3 × 10 min';am=run('Threshold intervals',total,null,threshold,`${total} km total including 2–3 km warm-up and cool-down. ${reps} controlled threshold with 2 min easy jog between. Shorten repetitions if form or effort deteriorates.`);}
     }
-    if (dow === 2) return work('Easy run', easy, `${early ? 45 : cutback ? 45 : 55} minutes conversational. Optional light strength after the run.`);
-    if (dow === 3) {
-      if (week < 4) return work('Easy run', easy, '40–45 minutes comfortable.');
-      if (!specific || cutback) return work('Steady aerobic run', '4:20–4:40/km · controlled', `15 minutes easy, ${cutback ? 15 : 20} minutes steady, then 10–15 minutes easy. Stay below threshold.`);
-      const reps = week < 16 ? '2 × 15 minutes' : week < 22 ? '3 × 15 minutes' : '2 × 10 minutes';
-      return work('Marathon-pace intervals', marathon, `15–20 minutes easy, ${reps} at goal pace with 3 minutes easy jog between; 10–15 minutes easy. Back off if goal pace is not controlled.`);
+    if(dow===2)am=run('Aerobic easy run',aerobic,null,easy,`${aerobic} km easy. Optional light strength or mobility later if recovered.`);
+    if(dow===3){
+      if(early)am=run('Easy aerobic run',aerobic,null,easy,`${aerobic} km easy and conversational.`);
+      else if(cutback||!specific){const total=aerobic+2;am=run('Steady aerobic run',total,null,steady,`${total} km total. Run 3 km easy, then ${cutback?'3':'5'} km steady; finish easy. Steady is controlled, not threshold.`);}
+      else {const total=aerobic+5;const reps=week<15?'2 × 3 km':week<19?'2 × 4 km':week<22?'3 × 3 km':'2 × 2 km';am=run('Marathon-pace intervals',total,null,marathon,`${total} km total, including easy warm-up and cool-down. Run ${reps} at controlled marathon effort with 1 km easy between. Goal pace is provisional; adjust by effort.`);}
     }
-    if (dow === 4) return recovery;
-    if (dow === 5) return work('Easy run + strides', easy, `${early ? 40 : cutback ? 40 : 50} minutes easy; optionally 4 × 20 seconds relaxed strides with full recovery.`);
-    return work('Long easy run', '4:45–5:25/km · conversational', `${longs[week]} minutes easy. Practice fueling and hydration on longer runs; keep effort comfortable. Shorten if tired.`);
+    if(dow===4)am=run('Recovery run',rec,null,recovery,`${rec} km very easy. Keep this a light day; stop or walk if pain changes your gait.`);
+    if(dow===5)am=run('Easy run + strides',aerobic,null,easy,`${aerobic} km easy; optionally add 4 × 20-second relaxed strides with full recovery. Keep legs fresh for tomorrow.`);
+    if(dow===6){let note=`${longRun} km comfortable. Practice race fueling and hydration; finish at easy effort.`;if(specific&&!cutback&&week<=22)note=`${longRun} km total: start easy and include the final ${week<16?'4':'6'} km at controlled steady effort (about 4:15–4:30/km), only when feeling good. Practice fueling and hydration; drop the faster finish if fatigued.`;am=run('Long run',longRun,null,easy,note);}
+    let pm=[];
+    if(pmMinutes&&[1,3,5].includes(dow)&&week<24)pm=[treadmill(pmMinutes)];
+    const phase=week<4?'Recovery and return':week<11?'Aerobic base':week<22?'Marathon-specific build':'Taper';
+    return {am:[am],pm,phase};
   }
   const calendar=document.getElementById('plan-calendar'), sidebar=document.getElementById('plan-sidebar'), label=document.getElementById('plan-month'), status=document.getElementById('plan-status'), editor=document.getElementById('plan-editor');
   const id = x => document.getElementById(x);
@@ -48,7 +60,7 @@
   let cursor=monday(localToday()), mode='week', plan=empty(), activities=[], revision=0, connected=false, conflict=false, current=null, saving=false, needsSave=false, legacyAvailable=false, syncState=null;
   const uid=()=>globalThis.crypto?.randomUUID?.() || `w-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   function normalize(w,idValue){return {id:idValue||uid(),title:String(w.title||'Workout'),type:w.type||(/rest|walk/i.test(w.title||'')?'rest':'running'),setting:w.setting||'road',distance:w.distance??null,duration:w.duration??null,pace:String(w.pace||''),notes:String(w.notes||''),status:w.status||'planned'};}
-  function defaults(date){const w=defaultWorkout(date);return {am:w.title==='No workout'?[]:[normalize(w,`default:${date}`)],pm:[]};}
+  function defaults(date){const day=plannedDay(date);return {am:day.am.map((w,i)=>normalize(w,i===0?`default:${date}`:`default:${date}:${i}`)),pm:day.pm.map((w,i)=>normalize(w,`default:${date}:pm:${i}`))};}
   function slots(date){return plan.days[date]||defaults(date);}
   function editable(date){if(!plan.days[date])plan.days[date]=defaults(date);return plan.days[date];}
   function saveLocal(){try{localStorage.setItem(key,JSON.stringify(plan));}catch{status.textContent='Browser storage is unavailable; export your plan to avoid losing changes.';}}
@@ -77,8 +89,8 @@
   }
   function workoutCard(w,date,slot){const b=button('',()=>open(date,slot,w.id),'workout-card');b.append(safeText('strong',w.title),safeText('span',[w.distance!==null?`${w.distance} km`:null,w.duration!==null?`${w.duration} min`:null,w.pace||null].filter(Boolean).join(' · ')||'No target set'),safeText('small',`${w.setting} · ${w.status}`));return b;}
   function dayCard(date,compact=false){
-   const card=document.createElement('article');card.className='plan-day'+(date===race?' race-day':'');const d=parse(date);
-   card.append(safeText('h3',d.toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'})));
+   const card=document.createElement('article');card.className='plan-day'+(date===race?' race-day':'')+(date===dateOf(localToday())?' today-day':'');if(date===dateOf(localToday()))card.setAttribute('aria-current','date');const d=parse(date);
+   card.append(safeText('h3',d.toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'})+(date===dateOf(localToday())?' · TODAY':'')));
    for(const slot of ['am','pm']){const part=document.createElement('div');part.className='plan-slot';part.append(safeText('div',slot.toUpperCase(),'slot-label'));for(const w of slots(date)[slot])part.append(workoutCard(w,date,slot));for(const a of actualFor(date,slot))part.append(actualCard(a,date,slot));part.append(button('+ Add',()=>open(date,slot),'add-workout'));card.append(part);}return card;
   }
   function metrics(startDate,endDate){let scheduled=0,plannedTreadmill=0,unknown=0,minutes=0,noDuration=0,runs=0,quality=0,longest=0,completed=0,completedMin=0,treadMin=0,crossMin=0;
@@ -86,7 +98,7 @@
    for(const a of activities){const p=dateInfo(a);if(!p||p.date<dateOf(startDate)||p.date>=dateOf(endDate))continue;const min=(a.moving_s||a.elapsed_s||0)/60;if(a.sport!=='running'){crossMin+=min;continue;}completedMin+=min;if(actualSetting(a)==='treadmill'){treadMin+=min;continue;}if(actualSetting(a)==='other'){continue;}completed+=(a.distance_m||0)/1000;}
    return {scheduled,plannedTreadmill,unknown,minutes,noDuration,runs,quality,longest,completed,completedMin,treadMin,crossMin};
   }
-  function summary(startDate,endDate,title,showTarget){const m=metrics(startDate,endDate),box=document.createElement('section');box.className='summary-card';box.append(safeText('p',title,'eyebrow'));if(showTarget){const target=plan.targets[dateOf(startDate)]||{distance:null,duration:null,focus:''};for(const [field,text] of [['distance','Weekly distance target · km'],['duration','Weekly duration target · min']]){const l=safeText('label',text);const input=document.createElement('input');input.type='number';input.min='0';input.max='10000';input.step='0.1';input.value=target[field]??'';input.placeholder='Set target';input.addEventListener('change',()=>{const value=input.value===''?null:Number(input.value);if(value!==null&&(!Number.isFinite(value)||value<0||value>10000))return;target[field]=value;plan.targets[dateOf(startDate)]=target;update();});l.append(input);box.append(l);}const focus=safeText('label','Phase / focus');const field=document.createElement('input');field.value=target.focus;field.maxLength=200;field.placeholder='e.g. Base, recovery';field.addEventListener('change',()=>{target.focus=field.value;plan.targets[dateOf(startDate)]=target;update();});focus.append(field);box.append(focus);if(target.distance!==null)box.append(safeText('p',`Scheduled difference: ${(m.scheduled-target.distance).toFixed(1)} km`),safeText('p',connected?`Completed remaining: ${Math.max(0,target.distance-m.completed).toFixed(1)} km (excludes treadmill)`:'Completed remaining: sign in to load activities'));}
+  function summary(startDate,endDate,title,showTarget){const m=metrics(startDate,endDate),box=document.createElement('section');box.className='summary-card';box.append(safeText('p',title,'eyebrow'));if(showTarget){const suggested=(()=>{let distance=0,hasDistance=false,duration=0,hasDuration=false,missingDuration=false;for(let d=startDate;d<endDate;d=add(d,1)){const day=plannedDay(dateOf(d));for(const w of [...day.am,...day.pm]){if(w.setting!=='treadmill'&&w.distance!==null){distance+=w.distance;hasDistance=true;}if(w.duration!==null){duration+=w.duration;hasDuration=true;}else missingDuration=true;}}return {distance:hasDistance?Number(distance.toFixed(1)):null,duration:hasDuration&&!missingDuration?duration:null,focus:plannedDay(dateOf(startDate)).phase};})();const target=plan.targets[dateOf(startDate)]||suggested;for(const [field,text] of [['distance','Weekly distance target · km'],['duration','Weekly duration target · min']]){const l=safeText('label',text);const input=document.createElement('input');input.type='number';input.min='0';input.max='10000';input.step='0.1';input.value=target[field]??'';input.placeholder='Set target';input.addEventListener('change',()=>{const value=input.value===''?null:Number(input.value);if(value!==null&&(!Number.isFinite(value)||value<0||value>10000))return;target[field]=value;plan.targets[dateOf(startDate)]=target;update();});l.append(input);box.append(l);}const focus=safeText('label','Phase / focus');const field=document.createElement('input');field.value=target.focus;field.maxLength=200;field.placeholder='e.g. Base, recovery';field.addEventListener('change',()=>{target.focus=field.value;plan.targets[dateOf(startDate)]=target;update();});focus.append(field);box.append(focus);if(target.distance!==null)box.append(safeText('p',`Scheduled difference: ${(m.scheduled-target.distance).toFixed(1)} km`),safeText('p',connected?`Completed remaining: ${Math.max(0,target.distance-m.completed).toFixed(1)} km (excludes treadmill)`:'Completed remaining: sign in to load activities'));}
    box.append(safeText('p',`Scheduled: ${m.scheduled.toFixed(1)} km${m.unknown?` + ${m.unknown} without distance`:''}`),safeText('p',connected?`Completed known outdoor: ${m.completed.toFixed(1)} km · ${Math.round(m.completedMin)} min running`:'Completed activities: sign in to load'),safeText('p',`Planned: ${Math.round(m.minutes)} min${m.noDuration?` + ${m.noDuration} without duration`:''} · ${m.runs} runs · ${m.quality} quality`),safeText('p',`Planned treadmill target: ${m.plannedTreadmill.toFixed(1)} km`),safeText('p',`Longest planned: ${m.longest?m.longest+' km':'not set'}`),safeText('p',connected?`Treadmill: ${Math.round(m.treadMin)} min completed`:'Treadmill: activity data unavailable'),safeText('p',connected?`Cross-training: ${Math.round(m.crossMin)} min completed`:'Cross-training: activity data unavailable'));return box;}
   function render(){
    calendar.replaceChildren();sidebar.replaceChildren();id('plan-week').setAttribute('aria-pressed',String(mode==='week'));id('plan-month-view').setAttribute('aria-pressed',String(mode==='month'));

@@ -13,12 +13,15 @@ const fixture={version:2,days:{'2026-10-27':{am:[{id:'am1',title:'Road easy',typ
 const activities=[{activity_key:'strava:1',sport:'running',sub_sport:'generic',start_utc:'2026-10-27T13:00:00Z',distance_m:10000,moving_s:3000,name:'Road run'}, {activity_key:'strava:2',sport:'running',sub_sport:'treadmill',start_utc:'2026-10-27T22:00:00Z',distance_m:99999,moving_s:1800,name:'Treadmill run'}];
 let saved;const fetch=async(url,options)=>{if(options?.method==='PUT'){saved=JSON.parse(options.body);return {ok:true,json:async()=>({revision:2})}}return {ok:true,json:async()=>({plan:fixture,revision:1,activities,sync:null})}};
 const context={document:{getElementById:n=>elements[n],createElement:tag=>new Element(tag)},localStorage,fetch,Intl,Date:FixedDate,Map,Set,Object,JSON,Number,String,Math,Blob,URL,crypto:{randomUUID:()=>Math.random().toString()},setTimeout,clearTimeout,prompt:()=>null,confirm:()=>true};context.globalThis=context;
-vm.runInNewContext(fs.readFileSync('dashboard/plan-calendar.js','utf8'),context);
+const source=fs.readFileSync('dashboard/plan-calendar.js','utf8').replace('  const calendar=', '  globalThis.__planTest={plannedDay};\n  const calendar=');
+vm.runInNewContext(source,context);
 const flatten=e=>[e.textContent,...e.children.flatMap(flatten)].join(' ');
 setTimeout(()=>{try{
+ const start=new Date('2026-10-27T00:00:00Z');for(let n=0;n<=179;n++){const date=new Date(start.getTime()+n*86400000).toISOString().slice(0,10);const day=context.__planTest.plannedDay(date);assert(day.am.length>0,`Missing workout on ${date}`);for(const w of [...day.am,...day.pm]){assert(w.pace,`Missing pace guidance on ${date}`);assert(w.type!=='rest',`Rest day on ${date}`);if(w.setting==='treadmill')assert.equal(w.distance,null);}}const race=context.__planTest.plannedDay('2027-04-24').am[0];assert.equal(race.distance,42.195);assert.match(race.pace,/3:51/);
+ const descendants=e=>[e,...e.children.flatMap(descendants)];assert(descendants(elements['plan-calendar']).some(e=>e.attributes['aria-current']==='date'&&e.className.includes('today-day')));
  const text=flatten(elements['plan-sidebar']);assert.match(text,/Scheduled: 15\.0 km/);assert.match(text,/Completed known outdoor: 10\.0 km/);assert.match(text,/Treadmill: 30 min completed/);assert.doesNotMatch(text,/99\.9 km/);
  const body=flatten(elements['plan-calendar']);assert.match(body,/This week/);assert.match(body,/Next week/);assert.match(body,/Road run/);assert.match(body,/Treadmill run/);
  assert.equal(saved.plan.links['strava:1'],'am1');assert.equal(saved.plan.links['strava:2'],'pm1');
  elements['plan-month-view'].click();assert.match(flatten(elements['plan-calendar']),/Mon/);assert.match(flatten(elements['plan-sidebar']),/MONTH TOTAL/);
- console.log('PASS: two-week/month views, AM/PM linking, planned totals, and treadmill exclusion');
+ console.log('PASS: full daily London plan, today highlight, two calendar views, AM/PM linking and treadmill exclusion');
  }catch(e){console.error(e);process.exitCode=1}},50);
