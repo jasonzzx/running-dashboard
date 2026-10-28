@@ -16,7 +16,17 @@ class handler(BaseHTTPRequestHandler):
             if not re.fullmatch(r'[0-9a-f-]{36}',job):raise ValueError()
             script=Path(__file__).resolve().parents[1]/'cloud/worker.py'
             result=subprocess.run([sys.executable,str(script),job],capture_output=True,timeout=270)
-            if result.returncode:return self.respond(502,{'error':'Sync worker failed; existing published data is unchanged.'})
+            if result.returncode:
+                detail={}
+                for line in result.stderr.decode(errors='replace').splitlines():
+                    if line.startswith('SYNC_ERROR:'):
+                        try:detail=json.loads(line[len('SYNC_ERROR:'):])
+                        except ValueError:pass
+                stage=detail.get('stage','startup')
+                if stage not in ('startup','database','snapshot_download','garmin_auth','activity_sync','parquet_export','dashboard_build','artifact_upload'):stage='startup'
+                code=detail.get('code','worker_failed')
+                if not re.fullmatch(r'provider_\d{3}|worker_failed',str(code)):code='worker_failed'
+                return self.respond(502,{'error':'Sync worker failed; existing published data is unchanged.','stage':stage,'code':code})
             return self.respond(200,{'ok':True})
         except subprocess.TimeoutExpired:return self.respond(504,{'error':'Sync exceeded its time limit; retry is safe.'})
         except Exception:return self.respond(400,{'error':'Invalid request'})

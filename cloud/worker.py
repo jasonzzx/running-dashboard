@@ -1,5 +1,5 @@
 """Queue-invoked worker. Work on an isolated snapshot; Node validates before promotion."""
-import base64, hashlib, json, os, shutil, sys, tempfile, urllib.request
+import base64, hashlib, http.client, json, os, re, shutil, sys, tempfile, urllib.request, urllib.error, time
 from pathlib import Path
 import psycopg
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 sys.path.insert(0,str(ROOT/'cloud'))
 from sync_runner import sync,write_json,read_json
-from sync_api import Garmin
+from sync_api import Garmin,ApiError
 from archive import pack,unpack
 
 def decrypt(value):
@@ -26,17 +26,48 @@ def download(url,target):
     parsed=urlparse(url)
     if parsed.scheme!='https' or parsed.hostname!=os.environ['CLOUD_BLOB_HOST']:
         raise ValueError('Invalid private snapshot location')
-    request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['BLOB_READ_WRITE_TOKEN']})
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self,*args):raise ValueError('Unexpected blob redirect')
-    with urllib.request.build_opener(NoRedirect).open(request,timeout=60) as response,target.open('wb') as output:
-        shutil.copyfileobj(response,output)
+    opener=urllib.request.build_opener(NoRedirect)
+    chunk_size=8*1024*1024
+    offset,total=0,None
+    with target.open('wb') as output:
+        while total is None or offset<total:
+            end=offset+chunk_size-1 if total is None else min(offset+chunk_size,total)-1
+            request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['BLOB_READ_WRITE_TOKEN'],'Range':f'bytes={offset}-{end}'})
+            for attempt in range(3):
+                try:
+                    with opener.open(request,timeout=20) as response:
+                        if response.status!=206:raise ValueError('Snapshot server did not honor range request')
+                        match=re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)',response.headers.get('Content-Range',''))
+                        if not match:raise ValueError('Invalid snapshot range response')
+                        lo,hi,size=map(int,match.groups())
+                        if lo!=offset or hi!=min(end,size-1) or not 0<size<=1_500_000_000 or total is not None and total!=size:raise ValueError('Inconsistent snapshot range')
+                        part=response.read(chunk_size+1)
+                        if len(part)!=hi-lo+1:raise OSError('Incomplete snapshot range')
+                    break
+                except (TimeoutError,urllib.error.URLError,OSError,http.client.IncompleteRead):
+                    if attempt==2:raise
+                    time.sleep(attempt+1)
+            output.write(part)
+            offset+=len(part)
+            total=size
 
 def upload(path,name):
     result=blob.put_blob(name,path.read_bytes(),access='private',allow_overwrite=True)
     return result.url if hasattr(result,'url') else result['url']
 
+PHASE='startup'
+
+def progress(message):
+    global PHASE
+    if 'Exporting Parquet' in message:PHASE='parquet_export'
+    elif 'Rebuilding' in message:PHASE='dashboard_build'
+    print(message,flush=True)
+
 def run(job_id):
+    global PHASE
+    PHASE='database'
     with psycopg.connect(os.environ['DATABASE_URL_UNPOOLED'],autocommit=True) as db:
         if not db.execute("SELECT pg_try_advisory_lock(711024)").fetchone()[0]:
             raise RuntimeError('A worker is already running')
@@ -49,6 +80,7 @@ def run(job_id):
         with tempfile.TemporaryDirectory(prefix='running-cloud-') as folder:
             root=Path(folder)
             archive=root/'input.zip'
+            PHASE='snapshot_download'
             download(dataset,archive)
             expected=metadata.get('dataset_sha256') or metadata.get('baseline_sha256')
             if not expected or hashlib.sha256(archive.read_bytes()).hexdigest()!=expected:
@@ -59,14 +91,17 @@ def run(job_id):
             (root/'tests').symlink_to(ROOT/'tests',target_is_directory=True)
             write_json(root/'data/admin/credentials.json',config)
             clients={}
+            PHASE='garmin_auth'
             if config.get('garmin',{}).get('api_key'):
                 clients['garmin']=Garmin(config['garmin']['api_key'])
             try:
-                result=sync(lambda message:print(message,flush=True),root,clients=clients,finalize=False,isolated=True)
+                PHASE='activity_sync'
+                result=sync(progress,root,clients=clients,finalize=False,isolated=True)
             finally:
                 refreshed=read_json(root/'data/admin/credentials.json',{})
                 for provider,value in refreshed.items():
                     db.execute('UPDATE cloud_connections SET encrypted=%s,updated_at=now() WHERE provider=%s',[encrypt(value),provider])
+            PHASE='artifact_upload'
             prefix='sync/'+job_id+'/'
             output={'summary':result}
             # Preserve new source responses and Parquet snapshots privately.
@@ -92,5 +127,5 @@ if __name__=='__main__':
     try:run(sys.argv[1])
     except Exception as exc:
         # No provider payloads or credential-bearing exception URLs in logs/UI.
-        print('Cloud sync failed: '+type(exc).__name__,file=sys.stderr)
+        print('SYNC_ERROR:'+json.dumps({'stage':PHASE,'code':'provider_'+str(exc.status) if isinstance(exc,ApiError) else 'worker_failed','exception':type(exc).__name__}),file=sys.stderr)
         raise SystemExit(1)

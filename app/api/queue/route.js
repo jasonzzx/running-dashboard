@@ -19,7 +19,15 @@ export const POST=queue.handleCallback(async({id},metadata)=>{
  if(job.status!=='validating'){
   const body=JSON.stringify({id}),stamp=String(Math.floor(Date.now()/1000));
   const r=await fetch(process.env.APP_ORIGIN+'/api/worker',{method:'POST',headers:{'Content-Type':'application/json','X-Worker-Time':stamp,'X-Worker-Signature':workerSignature(body,stamp)},body,signal:AbortSignal.timeout(280000)});
-  if(!r.ok)throw new Error('Cloud worker failed ('+r.status+'); retry is safe.');
+  if(!r.ok){
+   const failure=await r.json().catch(()=>({}));
+   const stages={startup:'startup',database:'database access',snapshot_download:'snapshot download',garmin_auth:'Garmin authentication',activity_sync:'activity sync',parquet_export:'Parquet export',dashboard_build:'dashboard build',artifact_upload:'artifact upload'};
+   const stage=stages[failure.stage]||'worker execution';
+   const provider=/^provider_(\d{3})$/.exec(failure.code||'');
+   const error=new Error('Cloud worker failed');
+   error.publicMessage=provider?`Garmin HTTP ${provider[1]} during ${stage}. Reconnect for 401/403; otherwise retry.`:`Sync failed during ${stage}. The accepted snapshot is unchanged.`;
+   throw error;
+  }
   await queue.send('running-sync',{id},{idempotencyKey:id+'-validate'});
   return;
  }
@@ -61,7 +69,7 @@ export const POST=queue.handleCallback(async({id},metadata)=>{
   });
  }finally{await fs.rm(root,{recursive:true,force:true});}
  }catch(error){
-  await sql("UPDATE cloud_jobs SET error=$2,status=CASE WHEN $3>=3 THEN 'failed' ELSE status END,updated_at=now() WHERE id=$1 AND status NOT IN ('ready','published')",[id,'Cloud sync or validation failed; published data is unchanged. Retry is safe.',metadata.deliveryCount]);
+  await sql("UPDATE cloud_jobs SET error=$2,status=CASE WHEN $3>=3 THEN 'failed' ELSE status END,updated_at=now() WHERE id=$1 AND status NOT IN ('ready','published')",[id,error.publicMessage||'Cloud sync or validation failed; published data is unchanged. Retry is safe.',metadata.deliveryCount]);
   throw error;
  }
 },{retry:async(error,metadata)=>{
