@@ -18,6 +18,14 @@ from sync_store import initialize, known, merge_activity, add_recording, merge_w
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class BuildError(RuntimeError):
+    """Bounded diagnostics for credential-free dashboard commands."""
+    def __init__(self, command, result):
+        self.diagnostic = dict(command=Path(command[1]).name, returncode=result.returncode,
+                               output=(result.stderr or result.stdout)[-2500:])
+        super().__init__('Dashboard command failed')
+
+
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix('.tmp')
@@ -47,7 +55,7 @@ def run_command(command, root=ROOT, env=None):
     result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, timeout=1800)
     if result.returncode:
         # These commands never receive credentials. Keep output bounded.
-        raise RuntimeError('Command failed: ' + ' '.join(command[:2]) + '\n' + (result.stderr or result.stdout)[-2500:])
+        raise BuildError(command, result)
     return result.stdout.strip()
 
 

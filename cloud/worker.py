@@ -9,7 +9,7 @@ from vercel.blob import sync as blob
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 sys.path.insert(0,str(ROOT/'cloud'))
-from sync_runner import sync,write_json,read_json
+from sync_runner import sync,write_json,read_json,BuildError
 from sync_api import Garmin,ApiError
 from archive import pack,unpack
 
@@ -128,5 +128,7 @@ if __name__=='__main__':
     try:run(sys.argv[1])
     except Exception as exc:
         # No provider payloads or credential-bearing exception URLs in logs/UI.
-        print('SYNC_ERROR:'+json.dumps({'stage':PHASE,'code':'provider_'+str(exc.status) if isinstance(exc,ApiError) else 'worker_failed','exception':type(exc).__name__}),file=sys.stderr)
+        detail={'stage':PHASE,'code':'provider_'+str(exc.status) if isinstance(exc,ApiError) else 'worker_failed','exception':type(exc).__name__}
+        if isinstance(exc,BuildError):detail['build']=exc.diagnostic
+        print('SYNC_ERROR:'+json.dumps(detail),file=sys.stderr)
         raise SystemExit(1)

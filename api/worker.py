@@ -26,7 +26,10 @@ class handler(BaseHTTPRequestHandler):
                 if stage not in ('startup','database','snapshot_download','garmin_auth','activity_sync','parquet_export','dashboard_build','artifact_upload'):stage='startup'
                 code=detail.get('code','worker_failed')
                 if not re.fullmatch(r'provider_\d{3}|worker_failed',str(code)):code='worker_failed'
-                return self.respond(502,{'error':'Sync worker failed; existing published data is unchanged.','stage':stage,'code':code})
+                # This endpoint requires a short-lived worker HMAC. Keep build
+                # diagnostics here; the owner-facing queue exposes only stage/code.
+                diagnostic=detail.get('build') if isinstance(detail.get('build'),dict) else None
+                return self.respond(502,{'error':'Sync worker failed; existing published data is unchanged.','stage':stage,'code':code,'build':diagnostic})
             return self.respond(200,{'ok':True})
         except subprocess.TimeoutExpired:return self.respond(504,{'error':'Sync exceeded its time limit; retry is safe.'})
         except Exception:return self.respond(400,{'error':'Invalid request'})
