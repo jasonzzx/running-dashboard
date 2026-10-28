@@ -98,8 +98,13 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(self.db.execute('SELECT count(*) FROM sources').fetchone()[0],1)
 
     def test_garmin_token_is_plain_text(self):
-        with patch('sync_api.request',return_value=b'header.payload.signature'):
+        with patch('sync_api.urllib.request.build_opener') as build:
+            response=build.return_value.open.return_value.__enter__.return_value
+            response.read.return_value=b'header.payload.signature'
             self.assertEqual(Garmin('dummy').token,'header.payload.signature')
+            request=build.return_value.open.call_args.args[0]
+            self.assertEqual(request.get_header('Accept'),'text/plain')
+            self.assertEqual(request.get_method(),'POST')
 
 
 class SecurityTests(unittest.TestCase):

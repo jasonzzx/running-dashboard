@@ -25,10 +25,10 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None  # Never forward an Authorization header to a redirect target.
 
 
-def request(url, token=None, params=None, form=None, api_key=None, binary=False):
+def request(url, token=None, params=None, form=None, api_key=None, binary=False, accept=None):
     if params:
         url += '?' + urllib.parse.urlencode(params)
-    headers = {'Accept': 'application/octet-stream' if binary else 'application/json'}
+    headers = {'Accept': accept or ('application/octet-stream' if binary else 'application/json')}
     if token:
         headers['Authorization'] = 'Bearer ' + token
     if api_key:
@@ -120,7 +120,7 @@ def normalize_activity(provider, raw):
 
 class Garmin:
     def __init__(self, key):
-        result = request(GARMIN + '/personalapitoken-service/personal-api/personal-api-key/token', api_key=key, binary=True)
+        result = request(GARMIN + '/personalapitoken-service/personal-api/personal-api-key/token', api_key=key, binary=True, accept='text/plain')
         # Official client consumes response.text: this endpoint returns a raw JWT.
         self.token = result.decode().strip()
         if not isinstance(self.token, str) or not self.token:

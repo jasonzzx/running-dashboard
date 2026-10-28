@@ -20,8 +20,11 @@ export async function POST(request){
   const user=await requireOwner(request),text=await request.text();
   if(text.length>16384)throw new Error('Request too large');
   const body=JSON.parse(text);
-  const active=await sql("SELECT id FROM cloud_jobs WHERE status IN ('queued','running','validating')");
-  if(active.length)throw new Error('A sync is already running / 同步正在进行');
+  const active=await sql("SELECT id,status FROM cloud_jobs WHERE status IN ('queued','running','validating')");
+  if(active.length){
+   if(body.action==='sync')return Response.json({id:active[0].id,status:active[0].status,resumed:true});
+   throw new Error('A sync is already running / 同步正在进行');
+  }
   const [settings]=await sql('SELECT * FROM cloud_settings WHERE id=1');
   if(!settings)throw new Error('Dataset migration is not ready / 数据迁移尚未完成');
   if(body.action==='garmin'){
