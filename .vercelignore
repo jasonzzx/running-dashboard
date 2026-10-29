@@ -1,7 +1,8 @@
 .venv/
 .venv-cloud/
 data/
-/reports/
+/reports/*
+!/reports/training_history_for_ai.md
 .agents/
 .env*
 vendor/
