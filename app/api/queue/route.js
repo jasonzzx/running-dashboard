@@ -24,8 +24,10 @@ export const POST=queue.handleCallback(async({id},metadata)=>{
    const stages={startup:'startup',database:'database access',snapshot_download:'snapshot download',garmin_auth:'Garmin authentication',activity_sync:'activity sync',parquet_export:'Parquet export',dashboard_build:'dashboard build',artifact_upload:'artifact upload'};
    const stage=stages[failure.stage]||'worker execution';
    const provider=/^provider_(\d{3})$/.exec(failure.code||'');
+   const snapshotErrors={snapshot_config:'Snapshot storage configuration is missing.',snapshot_location:'Snapshot storage location does not match the configured private store.',snapshot_redirect:'Snapshot storage returned an unexpected redirect.',snapshot_range:'Snapshot storage returned an invalid download response.',snapshot_network:'Snapshot download timed out or was interrupted.',snapshot_checksum:'Snapshot checksum does not match; the existing data was preserved.',snapshot_archive:'Snapshot archive could not be opened safely.'};
+   const http=/^snapshot_http_(\d{3})$/.exec(failure.code||'');
    const error=new Error('Cloud worker failed');
-   error.publicMessage=provider?`Garmin HTTP ${provider[1]} during ${stage}. Reconnect for 401/403; otherwise retry.`:`Sync failed during ${stage}. The accepted snapshot is unchanged.`;
+   error.publicMessage=snapshotErrors[failure.code]||(http?`Snapshot storage returned HTTP ${http[1]}; check the private Blob store and its token.`:null)|| (provider?`Garmin HTTP ${provider[1]} during ${stage}. Reconnect for 401/403; otherwise retry.`:`Sync failed during ${stage}. The accepted snapshot is unchanged.`);
    throw error;
   }
   await queue.send('running-sync',{id},{idempotencyKey:id+'-validate'});

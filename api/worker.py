@@ -25,7 +25,7 @@ class handler(BaseHTTPRequestHandler):
                 stage=detail.get('stage','startup')
                 if stage not in ('startup','database','snapshot_download','garmin_auth','activity_sync','parquet_export','dashboard_build','artifact_upload'):stage='startup'
                 code=detail.get('code','worker_failed')
-                if not re.fullmatch(r'provider_\d{3}|worker_failed',str(code)):code='worker_failed'
+                if not re.fullmatch(r'provider_\d{3}|worker_failed|snapshot_(?:config|location|redirect|range|network|checksum|archive|http_\d{3})',str(code)):code='worker_failed'
                 # This endpoint requires a short-lived worker HMAC. Keep build
                 # diagnostics here; the owner-facing queue exposes only stage/code.
                 diagnostic=detail.get('build') if isinstance(detail.get('build'),dict) else None

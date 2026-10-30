@@ -1,5 +1,5 @@
 """Queue-invoked worker. Work on an isolated snapshot; Node validates before promotion."""
-import base64, hashlib, http.client, json, os, re, shutil, sys, tempfile, urllib.request, urllib.error, time
+import base64, hashlib, http.client, json, os, re, shutil, sys, tempfile, urllib.request, urllib.error, time, zipfile
 from pathlib import Path
 import psycopg
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -21,13 +21,20 @@ def encrypt(value):
     nonce=os.urandom(12)
     return base64.b64encode(nonce+AESGCM(base64.b64decode(os.environ['CLOUD_ENCRYPTION_KEY'])).encrypt(nonce,json.dumps(value).encode(),None)).decode()
 
+class SnapshotError(Exception):
+    def __init__(self, code):
+        self.code=code
+        super().__init__(code)
+
 def download(url,target):
     from urllib.parse import urlparse
     parsed=urlparse(url)
-    if parsed.scheme!='https' or parsed.hostname!=os.environ['CLOUD_BLOB_HOST']:
-        raise ValueError('Invalid private snapshot location')
+    host=os.environ.get('CLOUD_BLOB_HOST')
+    if not host or not os.environ.get('BLOB_READ_WRITE_TOKEN'):raise SnapshotError('snapshot_config')
+    if parsed.scheme!='https' or parsed.hostname!=host or parsed.port not in (None,443) or parsed.username or parsed.password:
+        raise SnapshotError('snapshot_location')
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self,*args):raise ValueError('Unexpected blob redirect')
+        def redirect_request(self,*args):raise SnapshotError('snapshot_redirect')
     opener=urllib.request.build_opener(NoRedirect)
     chunk_size=8*1024*1024
     offset,total=0,None
@@ -38,16 +45,33 @@ def download(url,target):
             for attempt in range(3):
                 try:
                     with opener.open(request,timeout=20) as response:
-                        if response.status!=206:raise ValueError('Snapshot server did not honor range request')
+                        if response.status==200 and offset==0:
+                            # Some Blob servers ignore Range. Stream a bounded full response;
+                            # the accepted snapshot checksum is still verified before use.
+                            length=response.headers.get('Content-Length')
+                            if length and (not length.isdigit() or int(length)>1_500_000_000):raise SnapshotError('snapshot_range')
+                            output.seek(0);output.truncate();size=0
+                            while True:
+                                part=response.read(chunk_size)
+                                if not part:break
+                                size+=len(part)
+                                if size>1_500_000_000:raise SnapshotError('snapshot_range')
+                                output.write(part)
+                            if not size or length and size!=int(length):raise OSError('Incomplete snapshot')
+                            return
+                        if response.status!=206:raise SnapshotError('snapshot_range')
                         match=re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)',response.headers.get('Content-Range',''))
-                        if not match:raise ValueError('Invalid snapshot range response')
+                        if not match:raise SnapshotError('snapshot_range')
                         lo,hi,size=map(int,match.groups())
-                        if lo!=offset or hi!=min(end,size-1) or not 0<size<=1_500_000_000 or total is not None and total!=size:raise ValueError('Inconsistent snapshot range')
+                        if lo!=offset or hi!=min(end,size-1) or not 0<size<=1_500_000_000 or total is not None and total!=size:raise SnapshotError('snapshot_range')
                         part=response.read(chunk_size+1)
                         if len(part)!=hi-lo+1:raise OSError('Incomplete snapshot range')
                     break
+                except urllib.error.HTTPError as exc:
+                    if exc.code not in (408,429,500,502,503,504) or attempt==2:raise SnapshotError('snapshot_http_'+str(exc.code)) from None
+                    time.sleep(attempt+1)
                 except (TimeoutError,urllib.error.URLError,OSError,http.client.IncompleteRead):
-                    if attempt==2:raise
+                    if attempt==2:raise SnapshotError('snapshot_network') from None
                     time.sleep(attempt+1)
             output.write(part)
             offset+=len(part)
@@ -85,8 +109,9 @@ def run(job_id):
             download(dataset,archive)
             expected=metadata.get('dataset_sha256') or metadata.get('baseline_sha256')
             if not expected or hashlib.sha256(archive.read_bytes()).hexdigest()!=expected:
-                raise ValueError('Private snapshot checksum mismatch')
-            unpack(archive,root)
+                raise SnapshotError('snapshot_checksum')
+            try:unpack(archive,root)
+            except (ValueError, OSError, zipfile.BadZipFile):raise SnapshotError('snapshot_archive') from None
             archive.unlink()
             (root/'scripts').symlink_to(ROOT/'scripts',target_is_directory=True)
             (root/'tests').symlink_to(ROOT/'tests',target_is_directory=True)
@@ -128,7 +153,7 @@ if __name__=='__main__':
     try:run(sys.argv[1])
     except Exception as exc:
         # No provider payloads or credential-bearing exception URLs in logs/UI.
-        detail={'stage':PHASE,'code':'provider_'+str(exc.status) if isinstance(exc,ApiError) else 'worker_failed','exception':type(exc).__name__}
+        detail={'stage':PHASE,'code':exc.code if isinstance(exc,SnapshotError) else 'provider_'+str(exc.status) if isinstance(exc,ApiError) else 'worker_failed','exception':type(exc).__name__}
         if isinstance(exc,BuildError):detail['build']=exc.diagnostic
         print('SYNC_ERROR:'+json.dumps(detail),file=sys.stderr)
         raise SystemExit(1)
