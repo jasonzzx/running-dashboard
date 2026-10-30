@@ -8,6 +8,7 @@
     "api/worker.py": {"maxDuration": 300, "includeFiles": "{cloud,scripts}/**"},
     "app/api/queue/route.js": {"maxDuration": 300, "experimentalTriggers": [{"type": "queue/v2beta", "topic": "running-sync"}]}
   },
+  "crons": [{"path": "/api/cron/sync", "schedule": "0 10 * * *"}],
   "headers": [
     {
       "source": "/(.*)",

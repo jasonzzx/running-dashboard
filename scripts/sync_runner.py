@@ -1,5 +1,6 @@
 """Stage, validate and promote weekly additions. Never rebuild from the old base."""
 import datetime as dt
+from zoneinfo import ZoneInfo
 import fcntl
 import hashlib
 import json
@@ -134,7 +135,7 @@ def sync(log, root=ROOT, clients=None, finalize=True, isolated=False):
         summary = dict(run_id=run_id, added=0, enriched=0, skipped=0, review=0, samples=0, wellness=0, providers=list(clients))
         changed = set()
         # Today is omitted for wellness to avoid freezing a partial day's totals.
-        today = dt.datetime.now().astimezone().date()
+        today = dt.datetime.now(ZoneInfo('America/Toronto')).date()
         end = today.isoformat()
         with duckdb.connect(str(stage / 'data/running.duckdb')) as db:
             db.execute('SET threads=2')

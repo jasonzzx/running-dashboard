@@ -52,3 +52,5 @@ header .language-switch button.active{background:#194f94;color:#fff}
 .plan-day.today-day{border:2px solid #2163b5;background:#edf6ff;box-shadow:0 0 0 2px #d3e8ff}.plan-day.today-day h3{color:#1555a1;font-weight:800}
 
 .planned-volume{margin:14px 0 18px}.planned-volume strong,.planned-volume small{display:block}.planned-volume strong{font-size:30px;line-height:1.15;letter-spacing:-1px;margin:6px 0;color:#173f72}.planned-volume small{font-size:10px;color:var(--muted);line-height:1.5}.summary-card .target-editor{margin:14px 0;padding:10px 0;border-top:1px solid var(--line)}.target-editor summary{font-size:11px}.target-editor label{margin-top:10px}
+
+.day-progress{font-size:10px;color:#365b79;margin:0 0 8px}.day-progress progress{display:block;width:100%;height:7px;margin-top:4px;accent-color:#248353}.month-grid .day-progress{font-size:9px}

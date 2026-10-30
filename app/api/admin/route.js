@@ -1,8 +1,7 @@
-import {randomUUID} from 'node:crypto';
-import {send} from '@vercel/queue';
 import {requireOwner} from '../../../lib/auth';
 import {sql,transaction} from '../../../lib/db';
 import {encrypt} from '../../../lib/security';
+import {startSync} from '../../../lib/start-sync';
 export const dynamic='force-dynamic';
 export const maxDuration=60;
 export async function GET(request){
@@ -41,11 +40,7 @@ export async function POST(request){
    return Response.json({ok:true});
   }
   if(body.action==='sync'){
-   if(!(await sql("SELECT provider FROM cloud_connections WHERE provider='garmin'")).length)throw new Error('Connect an account first / 请先连接账户');
-   const id=randomUUID();
-   await sql("INSERT INTO cloud_jobs(id,status) VALUES ($1,'queued')",[id]);
-   try{await send('running-sync',{id},{idempotencyKey:id,region:'iad1'});}catch(e){await sql("UPDATE cloud_jobs SET status='failed',error='Could not enqueue; retry sync',updated_at=now() WHERE id=$1 AND status='queued'",[id]);throw new Error('Could not start sync; retry / 无法启动同步，请重试');}
-   return Response.json({id});
+   return Response.json(await startSync());
   }
   if(body.action==='publish'){
    if(!/^[0-9a-f-]{36}$/.test(body.id||''))throw new Error('Invalid sync');
