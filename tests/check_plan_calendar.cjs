@@ -10,9 +10,9 @@ const elements=Object.fromEntries(names.map(n=>[n,new Element()]));
 const store=new Map();const localStorage={getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)};
 class FixedDate extends Date{constructor(...a){super(...(a.length?a:['2026-10-27T12:00:00Z']))}static now(){return new Date('2026-10-27T12:00:00Z').getTime()}}
 const fixture={version:2,days:{'2026-10-27':{am:[{id:'am1',title:'Road easy',type:'running',setting:'road',distance:10,duration:50,pace:'5:00/km',notes:'',status:'planned'}],pm:[{id:'pm1',title:'Treadmill',type:'running',setting:'treadmill',distance:5,duration:30,pace:'effort',notes:'',status:'planned'}]}},targets:{},links:{},placements:{}};
-const activities=[{activity_key:'strava:1',sport:'running',sub_sport:'generic',start_utc:'2026-10-27T13:00:00Z',distance_m:8000,moving_s:2400,avg_pace_s_km:300,avg_hr_bpm:145,name:'Road run'}, {activity_key:'strava:2',sport:'running',sub_sport:'treadmill',start_utc:'2026-10-27T22:00:00Z',distance_m:99999,moving_s:1800,name:'Treadmill run'}];
+const activities=[{activity_key:'strava:1',sport:'running',sub_sport:'generic',start_utc:'2026-10-27T13:00:00Z',distance_m:8000,moving_s:2400,pace_s:300,avg_hr_bpm:145,name:'Road run'}, {activity_key:'strava:2',sport:'running',sub_sport:'treadmill',start_utc:'2026-10-27T22:00:00Z',distance_m:99999,moving_s:1800,name:'Treadmill run'}];
 let saved;const fetch=async(url,options)=>{if(options?.method==='PUT'){saved=JSON.parse(options.body);return {ok:true,json:async()=>({revision:2})}}return {ok:true,json:async()=>({plan:fixture,revision:1,activities,sync:null})}};
-const context={document:{getElementById:n=>elements[n],createElement:tag=>new Element(tag)},localStorage,fetch,Intl,Date:FixedDate,Map,Set,Object,JSON,Number,String,Math,Blob,URL,crypto:{randomUUID:()=>Math.random().toString()},setTimeout,clearTimeout,prompt:()=>null,confirm:()=>true};context.globalThis=context;
+const context={document:{getElementById:n=>elements[n],createElement:tag=>new Element(tag)},localStorage,fetch,Intl,Date:FixedDate,Map,Set,Object,JSON,Number,String,Math,Blob,URL,crypto:{randomUUID:()=>Math.random().toString()},setTimeout,clearTimeout,prompt:()=>null,confirm:()=>true};context.globalThis=context;context.window=context;
 const source=fs.readFileSync('dashboard/plan-calendar.js','utf8').replace('  const calendar=', '  globalThis.__planTest={plannedDay};\n  const calendar=');
 vm.runInNewContext(source,context);
 const flatten=e=>[e.textContent,...e.children.flatMap(flatten)].join(' ');
@@ -25,3 +25,16 @@ setTimeout(()=>{try{
  elements['plan-month-view'].click();assert.match(flatten(elements['plan-calendar']),/Mon/);assert.match(flatten(elements['plan-sidebar']),/MONTH TOTAL/);
  console.log('PASS: full daily London plan, today highlight, two calendar views, AM/PM linking and treadmill exclusion');
  }catch(e){console.error(e);process.exitCode=1}},50);
+
+// When the owner-only API is unavailable, retain the published snapshot and explain its age.
+const fallbackElements=Object.fromEntries(names.map(n=>[n,new Element()]));
+const fallbackContext={document:{getElementById:n=>fallbackElements[n],createElement:tag=>new Element(tag)},localStorage:{getItem:()=>null,setItem:()=>{}},fetch:async()=>({ok:false,json:async()=>({error:'Sign in as owner to save and sync across devices.'})}),Intl,Date:FixedDate,Map,Set,Object,JSON,Number,String,Math,Blob,URL,crypto:{randomUUID:()=>Math.random().toString()},setTimeout,clearTimeout,prompt:()=>null,confirm:()=>true,RUNNING_DATA:{activities}};
+fallbackContext.globalThis=fallbackContext;fallbackContext.window=fallbackContext;
+vm.runInNewContext(source,fallbackContext);
+setTimeout(()=>{try{
+ assert.match(flatten(fallbackElements['plan-calendar']),/Road run/);
+ assert.match(flatten(fallbackElements['plan-calendar']),/5:00\/km · 145 bpm avg HR/);
+ assert.match(fallbackElements['plan-status'].textContent,/published dashboard snapshot.*older/);
+ assert.match(fallbackElements['plan-last-sync'].textContent,/sign in/i);
+ console.log('PASS: published activity fallback and source notice when cloud access fails');
+}catch(e){console.error(e);process.exitCode=1}},50);
