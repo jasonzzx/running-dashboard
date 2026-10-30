@@ -38,3 +38,8 @@ setTimeout(()=>{try{
  assert.match(fallbackElements['plan-last-sync'].textContent,/sign in/i);
  console.log('PASS: published activity fallback and source notice when cloud access fails');
 }catch(e){console.error(e);process.exitCode=1}},50);
+const emptyCloudElements=Object.fromEntries(names.map(n=>[n,new Element()]));
+const emptyCloudContext={...fallbackContext,document:{getElementById:n=>emptyCloudElements[n],createElement:tag=>new Element(tag)},fetch:async()=>({ok:true,json:async()=>({plan:{version:2,days:{},targets:{},links:{},placements:{}},revision:1,activities:[],sync:null})})};
+emptyCloudContext.globalThis=emptyCloudContext;emptyCloudContext.window=emptyCloudContext;
+vm.runInNewContext(source,emptyCloudContext);
+setTimeout(()=>{try{assert.match(flatten(emptyCloudElements['plan-calendar']),/Road run/);assert.match(emptyCloudElements['plan-status'].textContent,/Cloud returned no activities/);console.log('PASS: empty cloud activity list uses labeled published snapshot');}catch(e){console.error(e);process.exitCode=1}},50);
