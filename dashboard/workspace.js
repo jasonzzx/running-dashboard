@@ -1,5 +1,5 @@
 (() => {
-  const names = ['data', 'source', 'plan'];
+  const names = ['data', 'source', 'plan', 'pace-tool'];
   const links = [...document.querySelectorAll('.app-tabs [data-tab]')];
   const views = Object.fromEntries(names.map(name => [name, document.getElementById(name + '-view')]));
   const source = document.getElementById('source-content');
