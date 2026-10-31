@@ -1,4 +1,4 @@
-// Run with Playwright available on NODE_PATH and CHROME_PATH if needed.
+// Run with Playwright on NODE_PATH and a dashboard server on port 8765.
 const assert = require('node:assert/strict');
 const {chromium} = require('playwright');
 (async () => {
@@ -6,96 +6,90 @@ const {chromium} = require('playwright');
   try {
     const page = await browser.newPage();
     const errors=[]; page.on('pageerror',e=>errors.push(e.message));
-    await page.goto((process.env.DASHBOARD_URL || 'http://127.0.0.1:8765/')+'?tab=pace-tool');
+    const url=(process.env.DASHBOARD_URL || 'http://127.0.0.1:8765/')+'?tab=pace-tool';
+    await page.goto(url);
     await page.locator('[data-pace-language="en"]').click();
-    assert.equal(await page.locator('#pace-tool-view').isVisible(),true);
-    assert.equal(await page.locator('.pace-tool-row').count(),7);
-    assert.equal(await page.locator('[id="pace-input-21.0975"]').inputValue(),'3:46');
-    assert.equal(await page.locator('[id="pace-input-42.195"]').inputValue(),'3:56');
-    const assertElapsed = async (distance, expected) => {
-      assert.equal(await page.locator(`output[data-elapsed-distance="${distance}"]`).textContent(), expected);
-      assert.equal(await page.locator(`svg text[data-elapsed-distance="${distance}"]`).textContent(), expected);
-      assert((await page.locator(`circle[data-distance="${distance}"]`).getAttribute('aria-label')).includes(expected));
+    const input = (d,field) => page.locator(`[id="${field}-input-${d}"]`);
+    const row = d => page.locator(`.pace-tool-row[data-distance="${d}"]`);
+    const edit = async (d,field,value) => { await input(d,field).fill(value); await input(d,field).press('Enter'); };
+    const elapsed = async (d,value) => {
+      assert.equal(await input(d,'time').inputValue(), value);
+      assert.equal(await page.locator(`svg text[data-elapsed-distance="${d}"]`).textContent(), value);
     };
-    await assertElapsed(5, '17:05');
-    await assertElapsed(10, '35:50');
-    await assertElapsed(21.0975, '1:19:23');
-    await assertElapsed(42.195, '2:45:48');
-    const rollover = await page.evaluate(() => [59.8, 3599.8, 3600, 0.4].map(window.PaceToolModel.formatElapsed));
-    assert.deepEqual(rollover, ['1:00', '1:00:00', '1:00:00', '0:00']);
-    const values=await page.evaluate(()=>{
-      const {paceAt,format,parse}=window.PaceToolModel;
-      const a={distance:5,pace:205};
-      return {double:paceAt(10,a),half:paceAt(2.5,a),round:format(239.8),bad:Number.isNaN(parse('3:99')),reverse:paceAt(5,{distance:21.0975,pace:paceAt(21.0975,a)})};
-    });
-    assert.deepEqual(values,{double:215,half:195,round:'4:00',bad:true,reverse:205});
-    const distanceInput = page.locator('#pace-add [name="distance"]');
-    const unitSelect = page.locator('#pace-add [name="unit"]');
-    assert.equal(await distanceInput.getAttribute('placeholder'), '10');
-    await unitSelect.selectOption('0.001');
-    assert.equal(await distanceInput.getAttribute('placeholder'), '100');
-    await unitSelect.selectOption('1');
-    assert.equal(await distanceInput.getAttribute('placeholder'), '10');
-    const addPace = page.locator('#pace-add-by-pace');
-    await addPace.locator('input').fill('2:55');
-    await addPace.getByRole('button').click();
-    assert.equal(await page.locator('.pace-tool-row').count(), 8);
-    assert.equal(await page.locator('[id="pace-input-0.625"]').inputValue(), '2:55');
-    assert.equal(await page.locator('form[data-distance="0.625"] label strong').textContent(), '625m');
-    assert.equal(await page.locator('[id="pace-input-5"]').inputValue(), '3:25');
-    await assertElapsed(0.625, '1:49');
-    await addPace.locator('input').fill('2:55');
-    await addPace.getByRole('button').click();
-    assert.equal(await page.locator('.pace-tool-row').count(), 8, 'Duplicate inverse point rejected');
-    await page.reload();
-    assert.equal(await page.locator('[id="pace-input-0.625"]').inputValue(), '2:55');
-    await page.locator('[data-remove="0.625"]').click();
-    const row=page.locator('form[data-distance="10"]');
-    await row.locator('input').fill('4:00'); await row.getByRole('button',{name:'Apply',exact:true}).click();
-    assert.equal(await page.locator('[id="pace-input-5"]').inputValue(),'3:50');
-    await assertElapsed(10, '40:00');
-    await assertElapsed(5, '19:10');
-    await addPace.locator('input').fill('3:21');
-    await addPace.getByRole('button').click();
-    const inverse = await page.evaluate(() => {
-      const saved = JSON.parse(localStorage.getItem('running-pace-tool-v1'));
-      const d = saved.distances.find(d => ![0.4,1,3,5,10,21.0975,42.195].includes(d));
-      return {d, pace:window.PaceToolModel.paceAt(d, saved.anchor), anchor:saved.anchor};
-    });
-    assert(Math.abs(inverse.d - 5 * 2 ** (-2.9)) < 1e-12);
-    assert(Math.abs(inverse.pace - 201) < 1e-10);
-    assert.deepEqual(inverse.anchor, {distance:10, pace:240});
-    await assertElapsed(inverse.d, await page.evaluate(d => window.PaceToolModel.formatElapsed(d * 201), inverse.d));
-    await page.locator(`[data-remove="${inverse.d}"]`).click();
-    for (const pace of ['0:00', '999999999:59']) {
-      await addPace.locator('input').fill(pace); await addPace.getByRole('button').click();
-      assert.equal(await page.locator('.pace-tool-row').count(),7);
+    assert(await page.locator('#pace-tool-view').isVisible());
+    assert.equal(await page.locator('.pace-tool-row').count(),7);
+    assert.equal(await page.locator('[data-remove]').count(),7);
+    assert.equal(await page.locator('#pace-add, #pace-add-by-pace').count(),0);
+    assert.equal(await input(21.0975,'pace').inputValue(),'3:46');
+    await elapsed(5,'17:05'); await elapsed(10,'35:50');
+    await elapsed(21.0975,'1:19:23'); await elapsed(42.195,'2:45:48');
+    for (const d of [21.0975,42.195]) {
+      assert(await input(d,'distance').getAttribute('readonly') !== null);
+      assert(await row(d).locator('[data-field="distance"][data-step="1"]').isDisabled());
     }
-    await page.locator('#pace-add [name="distance"]').fill('800');
-    await page.locator('#pace-add [name="unit"]').selectOption('0.001');
-    await page.getByRole('button',{name:'Add point',exact:true}).click();
-    assert.equal(await page.locator('.pace-tool-row').count(),8);
-    const xs=await page.evaluate(()=>[0.4,0.8,5,10].map(d=>Number(document.querySelector(`circle[data-distance="${d}"]`).getAttribute('cx'))));
-    assert(Math.abs((xs[1]-xs[0])-(xs[3]-xs[2]))<1e-8,'Equal doubling spacing');
+    // Pace edits shift the curve; time edits derive pace, including hours.
+    await edit(10,'pace','4:00');
+    assert.equal(await input(5,'pace').inputValue(),'3:50'); await elapsed(10,'40:00');
+    await edit(10,'time','30:00');
+    assert.equal(await input(10,'pace').inputValue(),'3:00');
+    await edit(42.195,'time','3:00:00'); await elapsed(42.195,'3:00:00');
+    assert.equal(await input(42.195,'distance').inputValue(),'42.195');
+    // Distance edit keeps that row's unrounded pace and moves the reference.
+    await edit(5,'pace','3:25');
+    await edit(5,'distance','6');
+    assert.equal(await input(6,'pace').inputValue(),'3:25'); await elapsed(6,'20:30');
+    assert.equal(await input(5,'distance').count(),0);
+    // Fine tuning uses one second or 100 metres, and supports keyboard controls.
+    await row(6).locator('[data-field="pace"][data-step="1"]').click();
+    assert.equal(await input(6,'pace').inputValue(),'3:26');
+    await row(6).locator('[data-field="pace"][data-step="-1"]').click();
+    await row(6).locator('[data-field="time"][data-step="1"]').click();
+    await elapsed(6,'20:31');
+    await row(6).locator('[data-field="time"][data-step="-1"]').click();
+    await row(6).locator('[data-field="distance"][data-step="1"]').click();
+    assert.equal(await input(6.1,'distance').inputValue(),'6.1');
+    await input(6.1,'distance').press('ArrowDown');
+    assert.equal(await input(6,'distance').inputValue(),'6');
+    await input(6,'pace').press('ArrowUp'); assert.equal(await input(6,'pace').inputValue(),'3:26');
+    await input(6,'pace').press('ArrowDown');
+    // Invalid edits and duplicate distances preserve the model.
+    const saved=await page.evaluate(()=>localStorage.getItem('running-pace-tool-v1'));
+    await edit(6,'distance','10');
+    assert((await page.locator('#pace-tool-status').textContent()).includes('already exists'));
+    await edit(6,'distance','0');
+    assert.equal(await page.evaluate(()=>localStorage.getItem('running-pace-tool-v1')),saved);
     await page.reload();
-    assert.equal(await page.locator('.pace-tool-row').count(),8);
-    assert.equal(await page.locator('[id="pace-input-5"]').inputValue(),'3:50');
+    await edit(6,'time','3:99');
+    assert.equal(await input(6,'time').getAttribute('aria-invalid'),'true');
+    await page.reload();
+    // Remove presets and the anchor, preserving the existing curve and persistence.
+    await page.locator('[data-remove="6"]').click();
+    assert.equal(await page.locator('.pace-tool-row').count(),6);
+    const retained=await input(10,'pace').inputValue();
+    await page.reload(); assert.equal(await page.locator('.pace-tool-row').count(),6);
+    assert.equal(await input(10,'pace').inputValue(),retained);
+    await page.locator('#pace-add-entry').click();
+    assert.equal(await page.locator('.pace-tool-row').count(),7);
+    await edit(2,'distance','0.8');
     await page.locator('circle[data-distance="0.8"]').focus(); await page.keyboard.press('Enter');
-    assert.equal(await page.locator('[id="pace-input-0.8"]').evaluate(el=>el===document.activeElement),true);
+    assert(await input(0.8,'pace').evaluate(el=>el===document.activeElement));
     await page.locator('[data-pace-language="zh-CN"]').click();
     assert.equal(await page.locator('#pace-tool-content h1').textContent(),'配速工具');
-    assert.equal(await page.locator('.pace-tool-elapsed span').first().textContent(), '用时');
-    await assertElapsed(10, '40:00');
+    assert((await page.locator('#pace-add-entry').textContent()).includes('添加'));
     await page.locator('[data-pace-language="en"]').click();
-    await page.locator('[data-remove="0.8"]').click();
-    assert.equal(await page.locator('.pace-tool-row').count(),7);
-    await page.locator('#pace-add [name="distance"]').fill('0'); await page.getByRole('button',{name:'Add point',exact:true}).click();
-    assert.equal(await page.locator('.pace-tool-row').count(),7);
     await page.setViewportSize({width:390,height:844});
-    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile page should not overflow');
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile overflow');
+    // All rows are removable, including the marathon presets; empty/single charts work.
+    while(await page.locator('[data-remove]').count()) await page.locator('[data-remove]').first().click();
+    assert.equal(await page.locator('.pace-tool-row').count(),0);
+    await page.reload(); assert.equal(await page.locator('.pace-tool-row').count(),0);
+    await page.locator('#pace-add-entry').click();
+    assert.equal(await page.locator('.pace-tool-row').count(),1);
+    assert.equal(await page.locator('svg').first().getAttribute('viewBox') !== null,true);
+    assert(!(await page.locator('.pace-tool-chart').innerHTML()).includes('NaN'));
     await page.locator('[data-tab="data"]').click(); assert(await page.locator('#data-view').isVisible());
     await page.goBack(); assert(await page.locator('#pace-tool-view').isVisible());
     assert.deepEqual(errors,[]);
-    console.log('PASS: elapsed times, pace model, inverse pace entry, unit placeholders, rounding, scaled chart, editing, custom distances, persistence, keyboard, languages, mobile and tab navigation');
+    console.log('PASS: editable distance/pace/time, fixed marathon distances, fine tuning, validation, removal, persistence, empty/single charts, languages, mobile and navigation');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exit(1);});
