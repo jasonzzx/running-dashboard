@@ -18,6 +18,14 @@ for (const name of ['data.js', 'analysis-data.js', 'garmin-data.js', 'pace-data.
 const activities = context.window.RUNNING_DATA.activities;
 const analysis = context.window.TRAINING_ANALYSIS;
 const sourceHash = createHash('sha256').update(fs.readFileSync(path.join(root,'data.js'))).digest('hex');
+const sourcePath = path.join(root, 'training-source.md');
+if (fs.existsSync(sourcePath)) {
+  const source = fs.readFileSync(sourcePath, 'utf8');
+  for (const name of ['data.js', 'garmin-data.js']) {
+    const hash = createHash('sha256').update(fs.readFileSync(path.join(root, name))).digest('hex');
+    assert(source.includes(`${name} SHA-256: ${hash}`), `AI source and ${name} are out of sync`);
+  }
+}
 assert.equal(analysis.deep?.version, 2, 'Deep analysis must be rebuilt');
 assert.equal(analysis.deep.source_sha256, sourceHash, 'Analysis and dashboard data are out of sync');
 for (const lang of ['en','zh']) {

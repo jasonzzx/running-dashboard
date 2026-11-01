@@ -242,7 +242,7 @@ def sync(log, root=ROOT, clients=None, finalize=True, isolated=False):
             run_command(['node', str(root / 'tests/check_deployment.mjs')], root, env)
         summary['latest_activity'] = status['date_range_utc'][1]
         summary['validated'] = finalize
-        generated = ['data.js', 'analysis-data.js', 'garmin-data.js', 'pace-data.js']
+        generated = ['data.js', 'analysis-data.js', 'garmin-data.js', 'pace-data.js', 'training-source.md']
         if finalize:
             generated += ['reports/analysis-en.html', 'reports/analysis-zh.html']
         generated += ['details/' + aid + '.js' for aid in sorted(changed)]

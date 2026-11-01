@@ -65,6 +65,8 @@ def main():
  build()
  from build_garmin_dashboard import build as build_garmin
  build_garmin()
+ from build_training_source import build as build_source
+ build_source()
  import subprocess
  if os.environ.get('RUNNING_DEFER_REPORTS')!='1':
   subprocess.run(['node',str(Path(__file__).resolve().parent/'build_analysis_reports.mjs')],check=True)

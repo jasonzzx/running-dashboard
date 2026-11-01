@@ -4,6 +4,30 @@
   const views = Object.fromEntries(names.map(name => [name, document.getElementById(name + '-view')]));
   const source = document.getElementById('source-content');
   let sourceLoaded = false;
+  let sourceRequest = 0;
+  async function loadSource() {
+    const request = ++sourceRequest;
+    sourceLoaded = false;
+    source.textContent = 'Loading training history…';
+    const status = document.getElementById('source-status');
+    status.textContent = 'Checking snapshot…';
+    try {
+      const local = location.protocol === 'file:';
+      let response = await fetch(local ? 'training-source.md' : '/api/training-source', {cache:'no-store'});
+      if (local && !response.ok) response = await fetch('../reports/training_history_for_ai.md');
+      if (!response.ok) throw Error();
+      const text = await response.text();
+      if (request !== sourceRequest) return;
+      source.textContent = text;
+      sourceLoaded = true;
+      const scope = response.headers.get('X-Training-Source');
+      status.textContent = scope === 'accepted' ? 'Latest validated sync · owner view' : scope === 'published' ? 'Published snapshot · newer syncs appear after publication' : scope === 'historical' ? 'Historical October 2026 snapshot · automatic refresh pending' : 'Local snapshot · see generation and coverage dates below';
+    } catch {
+      if (request !== sourceRequest) return;
+      source.textContent = 'Unable to load the source. Retry, or open dashboard/training-source.md directly for a local build.';
+      status.textContent = 'Snapshot unavailable';
+    }
+  }
   function show(name, updateUrl = false) {
     if (!names.includes(name)) name = 'data';
     for (const key of names) views[key].hidden = key !== name;
@@ -12,11 +36,16 @@
       else link.removeAttribute('aria-current');
     }
     if (updateUrl) { const url = new URL(location.href); url.searchParams.set('tab', name); url.hash = ''; history.pushState({tab:name}, '', url); }
-    if (name === 'source' && !sourceLoaded) {
-      const path = location.protocol === 'file:' ? '../reports/training_history_for_ai.md' : '/api/training-source';
-      fetch(path).then(r => { if (!r.ok) throw Error(); return r.text(); }).then(text => {source.textContent = text; sourceLoaded = true;}).catch(() => {source.textContent = 'Unable to load the source here. Open reports/training_history_for_ai.md directly or use the hosted app.';});
-    }
+    if (name === 'source') loadSource();
   }
+  document.getElementById('refresh-source').addEventListener('click', loadSource);
+  document.getElementById('download-source').addEventListener('click', e => {
+    e.preventDefault();
+    if (!sourceLoaded) return;
+    const url = URL.createObjectURL(new Blob([source.textContent], {type:'text/markdown;charset=utf-8'}));
+    const link = document.createElement('a'); link.href = url; link.download = 'training_history_for_ai.md'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
   links.forEach(link => link.addEventListener('click', e => {e.preventDefault(); show(link.dataset.tab, true); window.scrollTo(0, 0);}));
   window.addEventListener('popstate', () => show(new URL(location.href).searchParams.get('tab') || 'data'));
   show(new URL(location.href).searchParams.get('tab') || 'data');
