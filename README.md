@@ -134,4 +134,6 @@ Edit distance (km), pace (m:ss), or elapsed time (m:ss or h:mm:ss) directly in e
 
 Chart labels and fields show whole-second paces and elapsed times while calculations retain full precision. Every chart point shows elapsed time (distance × unrounded pace), in m:ss or h:mm:ss. Distances and calculated paces must remain positive. English and Chinese are supported.
 
+The Personal records section starts with the 13 supplied best efforts and Strava links, including exact mile distances (1 mile = 1.609344km). Edit a PR elapsed time to update its pace and magenta chart dot; clear its time to hide it. PR dots use the same chart scales and stay independent of the model curve. PR edits persist separately in this browser. Select a dot to inspect its time and pace and focus its editor.
+
 Verify with `node tests/check_pace_tool.cjs` while serving `dashboard/` at `http://127.0.0.1:8765/` (or set `DASHBOARD_URL`). Playwright and Chromium must be available; `CHROME_PATH` overrides the browser executable.
