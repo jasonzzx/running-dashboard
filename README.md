@@ -139,3 +139,11 @@ Chart labels and fields show whole-second paces and elapsed times while calculat
 The Personal records section starts with the 13 supplied best efforts and Strava links, including exact mile distances (1 mile = 1.609344km). Edit a PR elapsed time to update its pace and magenta chart dot; clear its time to hide it. PR dots use the same chart scales and stay independent of the model curve. PR edits persist separately in this browser. Select a dot to inspect its time and pace and focus its editor.
 
 Verify with `node tests/check_pace_tool.cjs` while serving `dashboard/` at `http://127.0.0.1:8765/` (or set `DASHBOARD_URL`). Playwright and Chromium must be available; `CHROME_PATH` overrides the browser executable.
+
+## Daily dashboard controls
+
+All tabs share language, owner sign-in, published activity coverage and (for the owner) last-sync and unpublished-update status. **Review and publish** opens the existing admin workflow. Summary metrics exclude treadmill distance, pace and heart rate; treadmill training volume is shown as duration. Original recording charts and historical report interpretations retain source measurements with explicit reliability labels.
+
+The Plan opens with a Today panel. Phone layouts put volume summaries before the calendar, and month dates open readable day details. Workout move/copy uses destination date and AM/PM fields. Completion is unknown when activity coverage does not reach the relevant day or period. Plans and recorded activity dates continue to use Toronto time.
+
+Verify these flows with `node tests/check_ux_browser.cjs` (Playwright and Chromium required).

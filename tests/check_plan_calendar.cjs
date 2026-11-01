@@ -3,9 +3,9 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 class Element {
  constructor(tag='div'){this.tag=tag;this.children=[];this.listeners={};this.value='';this.textContent='';this.hidden=false;this.className='';this.attributes={};this.classList={add:()=>{}};}
- append(...items){this.children.push(...items)} replaceChildren(...items){this.children=items} setAttribute(k,v){this.attributes[k]=v} addEventListener(k,v){this.listeners[k]=v} showModal(){} close(){} click(){this.listeners.click?.({currentTarget:this,target:this})}
+ prepend(...items){this.children.unshift(...items)} scrollIntoView(){} append(...items){this.children.push(...items)} replaceChildren(...items){this.children=items} setAttribute(k,v){this.attributes[k]=v} addEventListener(k,v){this.listeners[k]=v} showModal(){} close(){} click(){this.listeners.click?.({currentTarget:this,target:this})}
 }
-const names=['plan-calendar','plan-sidebar','plan-month','plan-last-sync','plan-status','plan-editor','plan-week','plan-month-view','plan-edit-date','plan-title','plan-type','plan-setting','plan-distance','plan-duration','plan-pace','plan-notes','plan-workout-status','plan-delete','plan-copy','plan-move','plan-form','plan-cancel','plan-prev','plan-next','plan-today','plan-export','plan-import','plan-import-button','plan-import-local','plan-export-local','plan-sync'];
+const names=['plan-calendar','plan-sidebar','plan-month','plan-last-sync','plan-status','plan-editor','plan-week','plan-month-view','plan-edit-date','plan-title','plan-type','plan-setting','plan-distance','plan-duration','plan-pace','plan-notes','plan-workout-status','plan-delete','plan-copy','plan-move','plan-form','plan-cancel','plan-prev','plan-next','plan-today','plan-export','plan-import','plan-import-button','plan-import-local','plan-export-local','plan-sync','plan-destination-date','plan-destination-slot','plan-today-panel'];
 const elements=Object.fromEntries(names.map(n=>[n,new Element()]));
 const store=new Map();const localStorage={getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)};
 class FixedDate extends Date{constructor(...a){super(...(a.length?a:['2026-10-27T12:00:00Z']))}static now(){return new Date('2026-10-27T12:00:00Z').getTime()}}
