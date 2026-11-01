@@ -27,6 +27,33 @@ const {chromium} = require('playwright');
       assert(await input(d,'distance').getAttribute('readonly') !== null);
       assert(await row(d).locator('[data-field="distance"][data-step="1"]').isDisabled());
     }
+    // Both models share a reference and preserve personal records and custom edits.
+    const model = page.locator('#pace-model');
+    assert.equal(await model.inputValue(),'10s');
+    const prBeforeModelSwitch = await page.locator('[data-pr-time]').evaluateAll(inputs=>inputs.map(el=>el.value));
+    await model.selectOption('vdot');
+    await elapsed(5,'17:05'); await elapsed(10,'35:26');
+    await elapsed(21.0975,'1:18:19'); await elapsed(42.195,'2:43:43');
+    assert.equal(await input(10,'pace').inputValue(),'3:33');
+    assert((await page.locator('.pace-tool-legend').textContent()).includes('VDOT'));
+    assert.deepEqual(await page.locator('[data-pr-time]').evaluateAll(inputs=>inputs.map(el=>el.value)),prBeforeModelSwitch);
+    await page.reload(); assert.equal(await model.inputValue(),'vdot'); await elapsed(10,'35:26');
+    await edit(10,'time','40:00');
+    await elapsed(10,'40:00'); assert.equal(await input(10,'pace').inputValue(),'4:00');
+    const vdotFive = await input(5,'pace').inputValue();
+    await model.selectOption('10s'); await elapsed(10,'40:00');
+    assert.equal(await input(5,'pace').inputValue(),'3:50');
+    await model.selectOption('vdot'); assert.equal(await input(5,'pace').inputValue(),vdotFive);
+    await row(10).locator('[data-field="pace"][data-step="1"]').click();
+    assert.equal(await input(10,'pace').inputValue(),'4:01'); await elapsed(10,'40:10');
+    await edit(10,'distance','12'); await elapsed(12,'48:12');
+    assert.equal(await model.inputValue(),'vdot');
+    await edit(12,'distance','10');
+    await page.locator('[data-pace-language="zh-CN"]').click();
+    assert.equal(await model.inputValue(),'vdot');
+    await page.locator('[data-pace-language="en"]').click();
+    await edit(5,'pace','3:25');
+    await model.selectOption('10s'); await elapsed(10,'35:50');
     // All supplied records, source links and exact mile distances are prefilled.
     const expectedPRs = ['1:05','2:27','3:03','5:27','11:07','17:19','35:49','56:06','1:00:21','1:15:49','1:20:23','1:57:32','2:47:33'];
     assert.equal(await page.locator('.pace-tool-pr-dot').count(),13);
@@ -125,6 +152,6 @@ const {chromium} = require('playwright');
     await page.locator('[data-tab="data"]').click(); assert(await page.locator('#data-view').isVisible());
     await page.goBack(); assert(await page.locator('#pace-tool-view').isVisible());
     assert.deepEqual(errors,[]);
-    console.log('PASS: PR data, editing, persistence, chart overlay, model independence, editable distance/pace/time, fixed marathon distances, fine tuning, validation, removal, persistence, empty/single charts, languages, mobile and navigation');
+    console.log('PASS: model switching and VDOT calculations, PR data, editing, persistence, chart overlay, model independence, editable distance/pace/time, fixed marathon distances, fine tuning, validation, removal, persistence, empty/single charts, languages, mobile and navigation');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exit(1);});
