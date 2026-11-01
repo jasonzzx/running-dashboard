@@ -127,8 +127,34 @@
    }
    box.append(safeText('p',activitySource!=='none'?`Completed known outdoor: ${m.completed.toFixed(1)} km · ${Math.round(m.completedMin)} min running`:'Completed activities: sign in to load'),safeText('p',`Planned: ${Math.round(m.minutes)} min${m.noDuration?` + ${m.noDuration} without duration`:''} · ${m.runs} runs · ${m.quality} quality`),safeText('p',`Planned treadmill target: ${m.plannedTreadmill.toFixed(1)} km`),safeText('p',`Longest planned: ${m.longest?m.longest+' km':'not set'}`),safeText('p',activitySource!=='none'?`Treadmill: ${Math.round(m.treadMin)} min completed`:'Treadmill: activity data unavailable'),safeText('p',activitySource!=='none'?`Cross-training: ${Math.round(m.crossMin)} min completed`:'Cross-training: activity data unavailable'));return box;
   }
+  function weeklyReview(){
+   const box=id('weekly-review');if(!box||!window.WeeklyReview)return;
+   const en=window.dashboardLanguage==='en',t=(a,b)=>en?a:b;
+   const today=localToday(),start=monday(today),end=add(start,7),from=dateOf(start),to=dateOf(end);
+   const rows=activities.map(a=>({...a,placement:dateInfo(a),setting:actualSetting(a),workoutId:plan.links[a.activity_key]}));
+   const weekRows=rows.filter(a=>a.placement&&a.placement.date>=from&&a.placement.date<to);
+   const days=Array.from({length:7},(_,i)=>{const day=slots(dateOf(add(start,i)));return {workouts:[...day.am,...day.pm]};});
+   const coverage=rows.reduce((m,a)=>a.placement&&a.placement.date>m?a.placement.date:m,'');
+   const previousWeeks=Array.from({length:4},(_,i)=>{const lo=dateOf(add(start,-7*(i+1))),hi=dateOf(add(start,-7*i));return rows.filter(a=>a.placement&&a.placement.date>=lo&&a.placement.date<hi&&a.sport==='running'&&['road','track','trail'].includes(a.setting)).reduce((sum,a)=>sum+(a.distance_m||0)/1000,0);});
+   const m=window.WeeklyReview.calculate({days,activities:weekRows,target:plan.targets[from]?.distance,coverage,currentDate:dateOf(today),previousWeeks});
+   box.replaceChildren(safeText('h2',t('This week · training review','本周训练回顾')),safeText('p',`${from} – ${dateOf(add(end,-1))} · Toronto`,'caption'));
+   box.append(safeText('strong',`${m.distance.toFixed(1)} / ${m.goal.toFixed(1)} km`, 'weekly-progress-value'));
+   if(m.percent!==null){
+    const label=t('Outdoor distance progress','户外距离进度');
+    const bar=document.createElement('progress');bar.max=m.goal;bar.value=Math.min(m.distance,m.goal);bar.setAttribute('aria-label',label);box.append(bar);
+    box.append(safeText('p',`${Math.round(m.percent)}% · ${m.remaining.toFixed(1)} km ${t('remaining against the full-week target','距离全周目标尚余')}`));
+   }else box.append(safeText('p',t('Set a positive weekly distance target to show percentage progress.','设置大于零的每周距离目标以显示百分比进度。')));
+   box.append(safeText('p',t('Recorded so far; outdoor running only. Treadmill distance, pace and HR are excluded.','仅计入已记录的户外跑步。排除跑步机距离、配速及心率。'),'caption'));
+   if(m.stale)box.append(safeText('p',t('Partial data — activity coverage does not reach today. This is recorded progress, not a missed-training score.','数据不完整：活动覆盖尚未到今天。此处为已记录进度，不代表漏训。'),'weekly-stale'));
+   if(m.missing)box.append(safeText('p',t(`${m.missing} outdoor sessions have no distance target; their distance is not estimated.`,`${m.missing} 次户外训练没有距离目标，未估算其距离。`),'caption'));
+   const stats=document.createElement('div');stats.className='weekly-review-stats';
+   for(const [label,value] of [[t('Sessions completed','已完成训练'),`${m.completed} / ${m.total}`],[t('Partial / skipped','部分完成 / 已跳过'),`${m.partial} / ${m.skipped}`],[t('Key sessions completed','已完成关键训练'),`${m.keyDone} / ${m.keyTotal}`],[t('Treadmill duration','跑步机时长'),`${Math.round(m.minutes)} min`],[t('Longest recorded outdoor run','已记录最长户外跑'),`${m.longest.toFixed(1)} km`]]){const item=document.createElement('div');item.append(safeText('span',label),safeText('strong',value));stats.append(item);}box.append(stats);box.append(safeText('p',t('Session completion uses manual status or linked recordings; partial sessions remain separate.','训练完成情况依据手动状态或已关联记录，部分完成单独统计。'),'caption'));
+   box.append(safeText('p',t(`Previous four calendar weeks averaged ${(m.baseline||0).toFixed(1)} recorded outdoor km/week. Missing recordings can lower this baseline; the current week is still in progress.`,`此前四个日历周已记录户外跑平均每周 ${(m.baseline||0).toFixed(1)} 公里。缺失记录会降低基准，本周仍在进行中。`),'caption'));
+   box.append(safeText('p',t('Next-week review: check unlinked activities and shortened sessions before changing the plan. Keep recovery days easy; do not cram missing kilometres into the weekend.','下周复盘：调整计划前核对未关联活动与缩短的训练。恢复日保持轻松，不要把缺失里程集中补到周末。')));
+  }
+  document.addEventListener?.('dashboardlanguagechange',weeklyReview);
   function render(){
-   calendar.replaceChildren();sidebar.replaceChildren();const todayPanel=id('plan-today-panel');if(todayPanel){todayPanel.replaceChildren(safeText('h2','Today'),dayCard(dateOf(localToday())));}id('plan-week').setAttribute('aria-pressed',String(mode==='week'));id('plan-month-view').setAttribute('aria-pressed',String(mode==='month'));
+   weeklyReview();calendar.replaceChildren();sidebar.replaceChildren();const todayPanel=id('plan-today-panel');if(todayPanel){todayPanel.replaceChildren(safeText('h2','Today'),dayCard(dateOf(localToday())));}id('plan-week').setAttribute('aria-pressed',String(mode==='week'));id('plan-month-view').setAttribute('aria-pressed',String(mode==='month'));
    if(mode==='week'){
     const end=add(cursor,14);label.textContent=`${cursor.toLocaleDateString('en-CA',{month:'short',day:'numeric',timeZone:'UTC'})} – ${add(end,-1).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}`;
     for(let week=0;week<2;week++){const startDate=add(cursor,week*7),section=document.createElement('section');section.className='calendar-week';section.append(safeText('h3',dateOf(cursor)===dateOf(monday(localToday()))?(week===0?'This week':'Next week'):`Week of ${dateOf(startDate)}`));const grid=document.createElement('div');grid.className='week-grid';for(let n=0;n<7;n++)grid.append(dayCard(dateOf(add(startDate,n))));section.append(grid);calendar.append(section);sidebar.append(summary(startDate,add(startDate,7),week===0?'WEEK 1':'WEEK 2',true));}

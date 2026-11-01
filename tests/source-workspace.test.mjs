@@ -6,7 +6,7 @@ import vm from 'node:vm';
 test('source reloads, ignores superseded responses, and copies/downloads visible content', async () => {
   const nodes = new Map();
   const node = id => {
-    if (!nodes.has(id)) nodes.set(id, {textContent:'', handlers:{}, addEventListener(event, handler) {this.handlers[event]=handler;}});
+    if (!nodes.has(id)) nodes.set(id, {textContent:'',children:[],append(...items){this.children.push(...items)},replaceChildren(...items){this.children=items}, handlers:{}, addEventListener(event, handler) {this.handlers[event]=handler;}});
     return nodes.get(id);
   };
   const pending = [];
@@ -16,7 +16,7 @@ test('source reloads, ignores superseded responses, and copies/downloads visible
     static revokeObjectURL() {}
   }
   const context = {
-    document:{getElementById:node, querySelectorAll:() => [], createElement:() => ({click(){}})},
+    document:{getElementById:node, querySelectorAll:() => [], createElement:() => ({textContent:'',append(){},click(){}})},
     window:{addEventListener(){},scrollTo(){}},
     location:{href:'https://example.com/?tab=source',protocol:'https:'},
     URL:BrowserURL, Blob, setTimeout:fn => fn(),

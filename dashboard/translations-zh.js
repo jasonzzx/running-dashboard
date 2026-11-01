@@ -2,6 +2,8 @@
 // Full sentences preserve meaning; {n} placeholders retain live values.
 (() => {
   const entries = [
+['Export purpose','导出用途'],['Weekly review · last 28 days','每周回顾 · 最近28天'],['Race preparation · last 84 days','备赛分析 · 最近84天'],['Full history','完整历史'],['Include historical October report','附带十月历史报告'],['View exact Markdown export','查看完整 Markdown 导出'],
+
 ["Data", "数据"],
 ["LONDON MARATHON · SAT 24 APR 2027", "伦敦马拉松 · 2027年4月24日 周六"],
 ["Toronto baseline 2:48:28 · London target 2:42:30 / 3:51 per km", "多伦多基准 2:48:28 · 伦敦目标 2:42:30 / 每公里3:51"],

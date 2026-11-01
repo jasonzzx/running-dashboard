@@ -45,3 +45,11 @@ test('only exact Markdown artifact is allowed', () => {
   assert(validAsset('training-source.md'));
   for (const name of ['../training-source.md','reports/private.md','training-source.md/secret']) assert(!validAsset(name));
 });
+
+test('focused preset requests preserve public visibility and reject unknown presets', async () => {
+ const deps=dependencies();const response=await trainingSource(new Request(request.url+'?preset=weekly&archive=0'),deps);
+ assert.equal(response.headers.get('X-Training-Source'),'published');
+ assert.deepEqual(deps.seen,['public-published']);
+ assert.doesNotMatch(await response.text(),/Original October report/);
+ const invalid=await trainingSource(new Request(request.url+'?preset=invalid'),dependencies());assert.equal(invalid.status,400);
+});

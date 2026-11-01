@@ -5,13 +5,14 @@ const path=require('path');
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  try {
+ const {exportDocument}=await import('../lib/source-exports.mjs');
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
  fs.mkdirSync('/tmp/running-ux-review',{recursive:true});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('http://review.local/**',async route=>{
   const url=new URL(route.request().url());
   if(url.pathname==='/api/training-plan')return route.fulfill({status:401,json:{error:'Sign in as owner to save and sync across devices.'}});
-  if(url.pathname==='/api/training-source')return route.fulfill({body:fs.readFileSync(path.join(__dirname,'../dashboard/training-source.md')),contentType:'text/markdown',headers:{'X-Training-Source':'published'}});
+  if(url.pathname==='/api/training-source')return route.fulfill({body:exportDocument(fs.readFileSync(path.join(__dirname,'../dashboard/training-source.md'),'utf8'),'Archived fixture',{preset:url.searchParams.get('preset')||'full',archive:url.searchParams.get('archive')==='1'}),contentType:'text/markdown',headers:{'X-Training-Source':'published'}});
   const name=url.pathname==='/'?'index.html':url.pathname.slice(1);
   const file=path.join(path.join(__dirname,'../dashboard'),name);
   if(!fs.existsSync(file)) return route.fulfill({status:404,body:'Not found'});
@@ -21,6 +22,8 @@ const path=require('path');
  page.setDefaultTimeout(8000);
  assert.deepEqual(errors,[]);
  await page.goto('http://review.local/?tab=plan',{waitUntil:'networkidle'});
+ assert(await page.locator('#weekly-review progress').isVisible());
+ assert.match(await page.locator('#weekly-review').innerText(),/Partial data|数据不完整/);
  assert(await page.locator('#plan-today-panel').isVisible());
  assert.match(await page.locator('#plan-today-panel').innerText(),/activity data not current|活动数据尚未更新/);
  assert.equal(await page.locator('#plan-today-panel progress').count(),0);
@@ -38,6 +41,23 @@ const path=require('path');
  assert.match(await page.locator('#volume').innerText(),/Treadmill duration/);
  assert.equal(await page.locator('#scatter circle').count(),0);
  assert(await page.locator('.app-global [data-language="en"]').isVisible());
+ await page.goto('http://review.local/?tab=source',{waitUntil:'networkidle'});
+ const weekly=await page.locator('#source-content').textContent();
+ assert.match(weekly,/Weekly review · AI context/);assert(!weekly.includes('Archived fixture'));
+ assert(await page.locator('#source-preview table').first().isVisible());
+ assert.equal(await page.locator('#source-preview script').count(),0);
+ await page.locator('#source-preset').selectOption('race');
+ await page.waitForFunction(()=>document.getElementById('source-content').textContent.startsWith('# Race preparation'));
+ const race=await page.locator('#source-content').textContent();assert(race.length>weekly.length);
+ await page.locator('#source-archive').check();
+ await page.waitForFunction(()=>document.getElementById('source-content').textContent.includes('Archived fixture'));
+ const displayed=await page.locator('#source-content').textContent();
+ const downloadPromise=page.waitForEvent('download');await page.locator('#download-source').click();const download=await downloadPromise;
+ assert.equal(fs.readFileSync(await download.path(),'utf8'),displayed);
+ await page.locator('#source-preset').selectOption('full');
+ await page.waitForFunction(()=>document.getElementById('source-content').textContent.includes('## Full activity history'));
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ assert.deepEqual(errors,[]);
  console.log('PASS: phone day selection, stale progress, date picker, shared language controls and reliable treadmill summaries');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
