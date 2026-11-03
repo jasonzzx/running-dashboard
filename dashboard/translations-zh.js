@@ -2,6 +2,9 @@
 // Full sentences preserve meaning; {n} placeholders retain live values.
 (() => {
   const entries = [
+['Pace range','配速区间'],['Custom range · seconds/km','自定义间隔 · 秒/公里'],['Custom','自定义'],['5s','5秒'],['10s','10秒'],['30s','30秒'],['1min','1分钟'],
+['Enter a positive pace range in seconds/km.','请输入大于零的配速间隔（秒/公里）。'],
+['This snapshot only contains 30s ranges. Rebuild or sync the original recordings to use other ranges.','当前快照仅含30秒区间。请重新生成或同步原始记录以使用其他间隔。'],
 ['Export purpose','导出用途'],['Weekly review · last 28 days','每周回顾 · 最近28天'],['Race preparation · last 84 days','备赛分析 · 最近84天'],['Full history','完整历史'],['Include historical October report','附带十月历史报告'],['View exact Markdown export','查看完整 Markdown 导出'],
 
 ["Data", "数据"],
@@ -45,7 +48,7 @@
     ['These may be training runs, trail efforts, or races. Similar distances do not imply comparable terrain, weather, effort, or fueling. Timing comes from original samples and includes pauses.','这些活动可能是训练跑、越野或比赛。距离相近并不意味着地形、天气、用力程度或补给条件相同。时间来自原始采样，包含暂停。'],
     ['Pace data is unavailable. Rebuild the dashboard to generate it.','配速数据暂不可用，请重新生成仪表盘数据。'],
     ['Treadmill runs are excluded. Choose Road / outdoor or another setting.','已排除跑步机记录，请选择公路 / 户外或其他场景。'], ['No usable running intervals in this selection.','当前筛选中没有可用的跑步区间。'],
-    ['Each interval between consecutive original samples is assigned to a 30-second pace range using its distance increase and elapsed time. Time and distance are summed separately; these are not activity-average paces or counts of samples. Ranges include their lower bound and exclude their upper bound. The first and last ranges include all faster and slower valid paces.','根据连续原始采样之间的距离增量和经过时间，将每个区间归入以 30 秒为间隔的配速范围。时间和距离分别汇总，并非活动平均配速或采样数量。每个范围包含下限、不包含上限；首尾范围分别包含所有更快或更慢的有效配速。'],
+    ['Each interval between consecutive original samples is assigned to the selected pace range using its distance increase and elapsed time. Time and distance are summed separately; these are not activity-average paces or counts of samples. Ranges include their lower bound and exclude their upper bound. The first and last ranges include all faster and slower valid paces.','根据连续原始采样之间的距离增量和经过时间，将每个区间归入所选间隔的配速范围。时间和距离分别汇总，并非活动平均配速或采样数量。每个范围包含下限、不包含上限；首尾范围分别包含所有更快或更慢的有效配速。'],
     ['We exclude recorded timer stops, stationary or backwards-distance intervals, missing values, gaps longer than 30 seconds, and speeds above 10 m/s. Where timer events are absent, the distance and gap checks still apply. Short unmarked pauses can remain. Excluded intervals are reported separately and are not assigned a pace. Totals may differ from Strava summaries. Pace is an estimate from recorded distance; GPS errors and hills still affect it.','计算排除已记录的计时暂停、静止或距离倒退的区间、缺失值、超过 30 秒的采样间隔，以及超过 10 米/秒的速度。没有计时事件时，仍执行距离和采样间隔检查。短暂且未标记的暂停可能保留。被排除的区间单独列出，不分配配速。因此总计可能与 Strava 摘要不同。配速根据记录距离估算，仍受 GPS 误差和坡度影响。'],
     ['01 / The long view','01 / 长期视角'], ['02 / Recent training structure','02 / 近期训练结构'], ['03 / Pace and heart-rate context','03 / 配速与心率背景'], ['04 / Long efforts and late-run durability','04 / 长距离训练与后程耐力'], ['06 / How to judge whether it is working','06 / 如何判断训练是否有效'],
     ['COACHING INTERPRETATION · CONDITIONAL','训练解读 · 条件性建议'], ['Limited long-effort evidence','长距离活动证据有限'], ['Coverage varies','数据覆盖情况不一'],

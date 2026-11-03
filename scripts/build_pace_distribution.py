@@ -10,7 +10,7 @@ def build():
     db = duckdb.connect(str(ROOT / 'data/running.duckdb'), read_only=True)
     db.execute('SET threads=2')
     # A stopped timer at either end, or any stop within the interval, excludes it.
-    rows = db.execute("""
+    db.execute("""CREATE TEMP TABLE pace_intervals AS
     WITH timer AS (
       SELECT activity_key, epoch(CAST(timestamp_utc AS TIMESTAMPTZ)) t, event_type
       FROM events WHERE event='timer'
@@ -33,19 +33,31 @@ def build():
         AND coalesce(state,'start') NOT LIKE 'stop%' AND NOT stopped AS valid
       FROM checked
     )
+    SELECT * FROM classified
+    """)
+    rows = db.execute("""
     SELECT activity_key,
       CASE WHEN valid THEN CASE WHEN 1000*seconds/dm<180 THEN 0
         WHEN 1000*seconds/dm>=480 THEN 11
         ELSE 1+floor((1000*seconds/dm-180)/30)::INTEGER END ELSE -1 END bin,
       sum(CASE WHEN seconds>0 AND isfinite(seconds) THEN seconds ELSE 0 END),
       sum(CASE WHEN dm>0 AND isfinite(dm) THEN dm ELSE 0 END), count(*)
-    FROM classified GROUP BY activity_key, bin ORDER BY activity_key, bin
+    FROM pace_intervals GROUP BY activity_key, bin ORDER BY activity_key, bin
     """).fetchall()
     data = {}
     for key, bin_id, seconds, metres, count in rows:
         data.setdefault(key, []).append([bin_id, seconds, metres, count])
+    # Preserve exact interval paces for arbitrary display widths; legacy bins
+    # remain available to analysis reports and older dashboard clients.
+    data['_intervals'] = {}
+    for key, pace, seconds, metres in db.execute('''
+        SELECT activity_key, 1000*seconds/dm AS pace, sum(seconds), sum(dm)
+        FROM pace_intervals WHERE valid GROUP BY activity_key, pace
+        ORDER BY activity_key, pace
+    ''').fetchall():
+        data['_intervals'].setdefault(key, []).append([pace, seconds, metres])
     (ROOT / 'dashboard/pace-data.js').write_text('window.PACE_DISTRIBUTION=' + json.dumps(data, separators=(',', ':')) + ';\n')
-    print(f'Pace distributions: {len(data)} non-treadmill running recordings')
+    print(f'Pace distributions: {len(data) - 1} non-treadmill running recordings')
     db.close()
 
 if __name__ == '__main__':
